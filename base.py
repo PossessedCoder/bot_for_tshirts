@@ -36,6 +36,7 @@ class Order(Base):
     products: Mapped[List["Product"]] = relationship(back_populates="order", cascade="all, delete-orphan",
                                                      lazy='subquery')
     status: Mapped[String] = mapped_column(String(20))
+    address: Mapped[String] = mapped_column(String(100), nullable=True)
 
 
 class Product(Base):

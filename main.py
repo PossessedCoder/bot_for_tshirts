@@ -1,7 +1,6 @@
 import asyncio
 from io import BytesIO
 from os import getenv
-from pyexpat.errors import messages
 
 from utils import *
 import aiogram.types
@@ -24,14 +23,14 @@ from typing import *
 import datetime
 import time
 from math import log, floor
-
+from dotenv import load_dotenv
 # logging
 # logging.basicConfig(level=logging.INFO)
 
 engine = create_engine("sqlite:///db/database.db", echo=True)
-
+load_dotenv('.env')
 TOKEN = getenv("TOKEN")
-bot = Bot(token='8469425954:AAFPsvRC0asctrD5sOdcT8wHxgH1c3ODYVE')
+bot = Bot(token=getenv('TOKEN'))
 dp = Dispatcher(bot=bot)
 
 
@@ -41,7 +40,7 @@ class Form(StatesGroup):
     new_event = State()
     event_id = State()
     all_product_id = State()
-
+    address = State()
 
 def create_db_and_tables() -> None:
     Base.metadata.create_all(engine)
