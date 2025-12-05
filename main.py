@@ -118,6 +118,14 @@ async def change_status_order_by_id(id_, status):
         od.status = status
         session.commit()
 
+async def address_update(id_, address):
+    with Session(engine) as session:
+        stmt = select(Order).where(Order.id == id_)
+        od = session.scalars(stmt).first()
+        od.address = address
+        session.commit()
+
+
 
 async def generate_user_status(status):
     if status == 'payed':
@@ -420,7 +428,7 @@ async def hoodie(message: CallbackQuery):
     print(await get_all_products())
     if await get_all_products_same_type('hoodie'):
         for el in await get_all_products_same_type('hoodie'):
-            s += hlink(str(el.name), f'tg://resolve?domain=Yume_shop_bot&start={el.type}_{el.id}') + ' Цена: ' + str(
+            s += hlink(str(el.name), f'tg://resolve?domain=Test123123213123123123123_bot&start={el.type}_{el.id}') + ' Цена: ' + str(
                 el.price) + ' ₽' + '\n'
         await bot.send_message(chat_id=message.from_user.id, text=s, parse_mode='HTML',
                                reply_markup=await simple_inline([[['Назад', 'return_to_price_list']]]))
@@ -440,7 +448,7 @@ async def tshort(message: CallbackQuery):
     print(await get_all_products())
     if await get_all_products_same_type('tshort'):
         for el in await get_all_products_same_type('tshort'):
-            s += hlink(str(el.name), f'tg://resolve?domain=Yume_shop_bot&start={el.type}_{el.id}') + ' Цена: ' + str(
+            s += hlink(str(el.name), f'tg://resolve?domain=Test123123213123123123123_bot&start={el.type}_{el.id}') + ' Цена: ' + str(
                 el.price) + ' ₽' + '\n'
         await bot.send_message(chat_id=message.from_user.id, text=s, parse_mode='HTML',
                                reply_markup=await simple_inline([[['Назад', 'return_to_price_list']]]))
@@ -460,7 +468,7 @@ async def hoodie(message: CallbackQuery):
     print(await get_all_products())
     if await get_all_products_same_type('hat'):
         for el in await get_all_products_same_type('hat'):
-            s += hlink(str(el.name), f'tg://resolve?domain=Yume_shop_bot&start={el.type}_{el.id}') + ' Цена: ' + str(
+            s += hlink(str(el.name), f'tg://resolve?domain=Test123123213123123123123_bot&start={el.type}_{el.id}') + ' Цена: ' + str(
                 el.price) + ' ₽' + '\n'
         await bot.send_message(chat_id=message.from_user.id, text=s, parse_mode='HTML',
                                reply_markup=await simple_inline([[['Назад', 'return_to_price_list']]]))
@@ -480,7 +488,7 @@ async def hoodie(message: CallbackQuery):
     print(await get_all_products())
     if await get_all_products_same_type('pants'):
         for el in await get_all_products_same_type('pants'):
-            s += hlink(str(el.name), f'tg://resolve?domain=Yume_shop_bot&start={el.type}_{el.id}') + ' Цена: ' + str(
+            s += hlink(str(el.name), f'tg://resolve?domain=Test123123213123123123123_bot&start={el.type}_{el.id}') + ' Цена: ' + str(
                 el.price) + ' ₽' + '\n'
         await bot.send_message(chat_id=message.from_user.id, text=s, parse_mode='HTML',
                                reply_markup=await simple_inline([[['Назад', 'return_to_price_list']]]))
@@ -498,7 +506,7 @@ async def hoodie(message: CallbackQuery):
     print(await get_all_products())
     if await get_all_products_same_type('patch'):
         for el in await get_all_products_same_type('patch'):
-            s += hlink(str(el.name), f'tg://resolve?domain=Yume_shop_bot&start={el.type}_{el.id}') + ' Цена: ' + str(
+            s += hlink(str(el.name), f'tg://resolve?domain=Test123123213123123123123_bot&start={el.type}_{el.id}') + ' Цена: ' + str(
                 el.price) + ' ₽' + '\n'
         await bot.send_message(chat_id=message.from_user.id, text=s, parse_mode='HTML',
                                reply_markup=await simple_inline([[['Назад', 'return_to_price_list']]]))
@@ -572,8 +580,8 @@ async def get_orders(message: Message):
     s = ''
     if orders:
         for el in orders:
-            a = str((datetime.datetime.strptime(el.data, '%Y-%m-%d %H:%M:%S.%f') + datetime.timedelta(days=3)).date())
-            s += f'id Заказа: {el.id}\nСтатус заказа: {await generate_user_status(el.status)}\n{"Примерная дата доставки " + a}\n'
+            a = str((datetime.datetime.strptime(el.data, '%Y-%m-%d %H:%M:%S.%f') + datetime.timedelta(days=7)).date())
+            s += f'id Заказа: {el.id}\nСтатус заказа: {await generate_user_status(el.status)}\n{"Примерная дата доставки " + a}\nТочка доставки: {el.address}'
             for i in el.products:
                 s += f'   {i.name}\n'
         if len(s) > 4096:
@@ -673,7 +681,7 @@ async def delete_all_product1(message: Message, state: FSMContext):
 
 
 @dp.callback_query(F.data.startswith('pay_'))
-async def pay_id(message: CallbackQuery):
+async def pay_id(message: CallbackQuery, state: FSMContext):
     i = message.data.split('_')[1]
     c = 0
     order: Order = await search_order_by_id(i)
@@ -685,10 +693,32 @@ async def pay_id(message: CallbackQuery):
     # user.discount = user.discount
     await update_order_status_by_id(i, 'payed')
     a = await bot.send_message(message.from_user.id, text='Успешно оплачено!')
+    await bot.send_message(message.from_user.id,text='Сейчас вам нужно будет прислать геолокацию Яндекс маркета в котором вы хоитите получить вашу вещь',
+                         reply_markup=await simple_inline([[['Прислать', f'sendaddress_{i}']]]))
     await message.message.delete()
     await asyncio.sleep(5)
     await a.delete()
 
+
+@dp.callback_query(F.data.startswith('sendaddress'))
+async def address(message: CallbackQuery, state: FSMContext):
+    await message.message.delete()
+    await state.set_state(Form.address)
+    await state.update_data(address=message.data.split('_')[-1])
+    a = await bot.send_message(message.from_user.id, text="Отправьте геолокацию")
+    await asyncio.sleep(60)
+    await a.delete()
+
+@dp.message(F.location)
+@dp.message(Form.address)
+async def address_collect(message: Message, state: FSMContext):
+    d = await state.get_data()
+    await address_update(int(d['address']), f'{message.location.latitude}, {message.location.longitude}')
+    await state.clear()
+    a = await bot.send_message(message.from_user.id, text='Успешно получен адрес!')
+    await message.delete()
+    await asyncio.sleep(5)
+    await a.delete()
 
 # Run the bot
 async def main() -> None:
