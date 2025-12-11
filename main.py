@@ -171,7 +171,7 @@ async def search_cart(user: User):
 
 async def search_orders(user: User):
     try:
-        return list(filter(lambda x: x.status != 'in_cart', user.orders))
+        return list(filter(lambda x: x.status != 'in_cart' and x.status != 'taken_away', user.orders))
     except:
         return None
 
@@ -581,7 +581,7 @@ async def add_to_cart(message: CallbackQuery):
 @dp.callback_query(F.data == 'update_status')
 async def admin_update_status(message: CallbackQuery, state: FSMContext):
     await state.set_state(Form.status)
-    await bot.send_message(chat_id=message.from_user.id, text='id///status(awaiting_delivery, delivered))')
+    await bot.send_message(chat_id=message.from_user.id, text='id///status(awaiting_delivery, delivered, taken_away))')
 
 
 @dp.message(Form.status)
@@ -599,15 +599,15 @@ async def get_orders(message: Message):
     s = ''
     if orders:
         for el in orders:
-            a = str((datetime.datetime.strptime(el.data, '%Y-%m-%d %H:%M:%S.%f') + datetime.timedelta(days=7)).date())
-            s += f'id Заказа: {el.id}\nСтатус заказа: {await generate_user_status(el.status)}\n{"Примерная дата доставки " + a}\nТочка доставки: {el.address}\n'
+            a = str((datetime.datetime.strptime(el.data, '%Y-%m-%d %H:%M:%S.%f') + datetime.timedelta(days=7)).date()).replace('-', '\-')
+            s += f'id Заказа: {el.id}\nСтатус заказа: {await generate_user_status(el.status)}\n{"Примерная дата доставки " + a}\nТочка доставки: `{el.address}`\n'
             for i in el.products:
                 s += f'   {i.name}\n'
         if len(s) > 4096:
             for x in range(0, len(s), 4096):
                 await message.answer(s[x:x + 4096])
         else:
-            await message.answer(s)
+            await message.answer(s, parse_mode='MarkdownV2')
         await message.delete()
     else:
         await message.answer('Вы ещё ничего не заказали')
@@ -743,7 +743,7 @@ async def address_collect(message: Message, state: FSMContext):
     await address_update(int(d['address']), f'{message.location.latitude}, {message.location.longitude}')
     await state.clear()
     a = await bot.send_message(message.from_user.id, text='Успешно получен адрес!')
-    await bot.send_message(7077870371, text='Новый заказ!')
+    await bot.send_message(7077870371, text=f'Новый заказ! Адрес: {message.location.latitude}, {message.location.longitude}; юзернейм: @{message.from_user.username}')
     await message.delete()
     await asyncio.sleep(5)
     await a.delete()
@@ -754,7 +754,7 @@ async def address_collect(message: Message, state: FSMContext):
     await address_update(int(d['address']), message.text)
     await state.clear()
     a = await bot.send_message(message.from_user.id, text='Успешно получен адрес!')
-    await bot.send_message(7077870371, text='Новый заказ!')
+    await bot.send_message(7077870371, text=f'Новый заказ! Адрес: {message.text}, юзернейм: @{message.from_user.username}', )
     await message.delete()
     await asyncio.sleep(5)
     await a.delete()
