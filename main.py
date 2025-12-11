@@ -7,7 +7,7 @@ import aiogram.types
 import asyncio
 from aiogram import Bot, Dispatcher
 from aiogram.fsm.context import FSMContext
-from aiogram.filters.state import StatesGroup, State
+from aiogram.filters.state import StatesGroup, State, StateFilter
 from aiogram.types import Message, CallbackQuery, InputFile, BufferedInputFile
 from sqlalchemy import create_engine, select, update
 from sqlalchemy.orm import Session
@@ -41,6 +41,8 @@ class Form(StatesGroup):
     event_id = State()
     all_product_id = State()
     address = State()
+    new_address = State()
+    order_delete_id = State()
 
 def create_db_and_tables() -> None:
     Base.metadata.create_all(engine)
@@ -123,6 +125,13 @@ async def address_update(id_, address):
         stmt = select(Order).where(Order.id == id_)
         od = session.scalars(stmt).first()
         od.address = address
+        session.commit()
+
+async def delete_order_by_id(id_):
+    with Session(engine) as session:
+        stmt = select(Order).where(Order.id == id_)
+        od: Order = session.scalars(stmt).first()
+        session.delete(od)
         session.commit()
 
 
@@ -347,7 +356,7 @@ async def admin(message: Message):
                              reply_markup=await simple_inline(
                                  [[['добавить товар', 'add_product']], [['посмотреть заказы', 'print_orders']],
                                   [['обновить статус по id', 'update_status']], [['добавить акцию', 'add_events']],
-                                  [['удалить акцию', 'delete_events']], [['удалить товар', 'delete_all_product']]]))
+                                  [['удалить акцию', 'delete_events']], [['удалить товар', 'delete_all_product']], [['изменить адрес доставки', 'update_address_delivery']], [['Удалить доставленный заказ', 'delete_order']]]))
 
 
 @dp.message(Command('cancel'))
@@ -371,7 +380,7 @@ async def cancel_handler(message: Message, state: FSMContext):
 
     # And remove keyboard (just in case)
 
-    await message.answer('msg', reply_markup=ReplyKeyboardRemove())
+    await message.answer('Отменено', reply_markup=ReplyKeyboardRemove())
 
 
 @dp.callback_query(F.data == 'add_product')
@@ -401,10 +410,20 @@ async def get_price_list(message: CallbackQuery):
 
 👇🌸 Выбери то что тебе по душе 🌸👇''',
                            reply_markup=await simple_inline(
-                               [[['Футболки', 'tshort'], ['Шапки', 'hat'], ['Худи', 'hoodie']],
-                                [['Трусы', 'pants']],
+                               [[['Худи', 'hoodie']], [['Футболки', 'tshort']],
                                 [['Патчи', 'patch']]]))
 
+@dp.callback_query(F.data == 'update_address_delivery')
+async def update_address_delivery(message: CallbackQuery, state: FSMContext):
+    await state.set_state(Form.new_address)
+    await bot.send_message(message.from_user.id, text='Введите новый адрес в формате айди заказа///новый адрес(точка)')
+
+@dp.message(Form.new_address)
+async def update_address_delivery(message: CallbackQuery, state: FSMContext):
+    data = message.text.split('///')
+    await address_update(int(data[0]), data[-1])
+    await message.answer(text='Успешно изменено!')
+    await state.clear()
 
 @dp.callback_query(F.data == 'event')
 async def events(message: Message):
@@ -581,7 +600,7 @@ async def get_orders(message: Message):
     if orders:
         for el in orders:
             a = str((datetime.datetime.strptime(el.data, '%Y-%m-%d %H:%M:%S.%f') + datetime.timedelta(days=7)).date())
-            s += f'id Заказа: {el.id}\nСтатус заказа: {await generate_user_status(el.status)}\n{"Примерная дата доставки " + a}\nТочка доставки: {el.address}'
+            s += f'id Заказа: {el.id}\nСтатус заказа: {await generate_user_status(el.status)}\n{"Примерная дата доставки " + a}\nТочка доставки: {el.address}\n'
             for i in el.products:
                 s += f'   {i.name}\n'
         if len(s) > 4096:
@@ -621,7 +640,7 @@ ID профиля: {user.id} (для поддержки)
 
 Уровень: {floor(log(int(user.all_orders_sum) // 100, 2)) if user.all_orders_sum != 0 else 0}
 XP до следующего уровня:
-{int(user.all_orders_sum) // 100}/{2 ** log(int(user.all_orders_sum) // 100, 2) if user.all_orders_sum != 0 else 2}
+{int(user.all_orders_sum) // 100}/{round(2 ** (log(int(user.all_orders_sum) // 100, 2))) if user.all_orders_sum != 0 else 2}
 
 Кол-во заказов: {user.all_orders_count}
 Общая сумма заказов: {user.all_orders_sum}
@@ -693,14 +712,14 @@ async def pay_id(message: CallbackQuery, state: FSMContext):
     # user.discount = user.discount
     await update_order_status_by_id(i, 'payed')
     a = await bot.send_message(message.from_user.id, text='Успешно оплачено!')
-    await bot.send_message(message.from_user.id,text='Сейчас вам нужно будет прислать геолокацию Яндекс маркета в котором вы хоитите получить вашу вещь',
-                         reply_markup=await simple_inline([[['Прислать', f'sendaddress_{i}']]]))
+    await bot.send_message(message.from_user.id,text='Сейчас вам нужно будет прислать геолокацию Яндекс маркета в котором вы хотите получить вашу вещь, либо связаться с менеджером для уточнения адреса, либо прислать адрес вручную.',
+                         reply_markup=await simple_inline([[['Прислать геолокацию', f'sendaddressgeo_{i}']], [['Связаться с менеджером', 'tg://resolve?domain=project_manager_Y|url']], [['Прислать адрес', f'sendaddresstext_{i}']]]))
     await message.message.delete()
     await asyncio.sleep(5)
     await a.delete()
 
 
-@dp.callback_query(F.data.startswith('sendaddress'))
+@dp.callback_query(F.data.startswith('sendaddressgeo'))
 async def address(message: CallbackQuery, state: FSMContext):
     await message.message.delete()
     await state.set_state(Form.address)
@@ -709,16 +728,47 @@ async def address(message: CallbackQuery, state: FSMContext):
     await asyncio.sleep(60)
     await a.delete()
 
-@dp.message(F.location)
-@dp.message(Form.address)
+@dp.callback_query(F.data.startswith('sendaddresstext'))
+async def address(message: CallbackQuery, state: FSMContext):
+    await message.message.delete()
+    await state.set_state(Form.address)
+    await state.update_data(address=message.data.split('_')[-1])
+    a = await bot.send_message(message.from_user.id, text="Отправьте адрес")
+    await asyncio.sleep(60)
+    await a.delete()
+
+@dp.message(F.location, StateFilter(Form.address))
 async def address_collect(message: Message, state: FSMContext):
     d = await state.get_data()
     await address_update(int(d['address']), f'{message.location.latitude}, {message.location.longitude}')
     await state.clear()
     a = await bot.send_message(message.from_user.id, text='Успешно получен адрес!')
+    await bot.send_message(7077870371, text='Новый заказ!')
     await message.delete()
     await asyncio.sleep(5)
     await a.delete()
+
+@dp.message(Form.address)
+async def address_collect(message: Message, state: FSMContext):
+    d = await state.get_data()
+    await address_update(int(d['address']), message.text)
+    await state.clear()
+    a = await bot.send_message(message.from_user.id, text='Успешно получен адрес!')
+    await bot.send_message(7077870371, text='Новый заказ!')
+    await message.delete()
+    await asyncio.sleep(5)
+    await a.delete()
+
+@dp.callback_query(F.data == 'delete_order')
+async def delete_order(message: Message, state: FSMContext):
+    await state.set_state(Form.order_delete_id)
+    await bot.send_message(message.from_user.id, text='Пришлите айди заказа')
+
+@dp.message(Form.order_delete_id)
+async def id_order_delete(message: Message, state: FSMContext):
+    await delete_order_by_id(int(message.text))
+    await state.clear()
+    await message.answer('Успешно')
 
 # Run the bot
 async def main() -> None:

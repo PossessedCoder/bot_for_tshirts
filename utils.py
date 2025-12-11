@@ -8,7 +8,7 @@ engine = create_engine('sqlite:///db///database.db')
 
 # Выполните запрос к вашей таблице
 def create_excel_orders():
-    query = "SELECT * FROM orders"
+    query = "SELECT * FROM orders INNER JOIN products ON products.order_id = orders.id"
     df = pd.read_sql(query, engine)
     a = f"tables/Orders{str(datetime.datetime.now()).replace(':', '-')}.xlsx"
     df.to_excel(a, index=False)
