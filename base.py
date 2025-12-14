@@ -46,6 +46,7 @@ class Product(Base):
     price: Mapped[int] = mapped_column(Integer)
     order_id: Mapped[int] = mapped_column(ForeignKey("orders.id"))
     order: Mapped[Order] = relationship(back_populates="products")
+    size: Mapped[String] = mapped_column(String(3))
 
 
 class AllProducts(Base):

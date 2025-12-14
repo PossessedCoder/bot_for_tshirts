@@ -147,7 +147,7 @@ async def generate_user_status(status):
         return 'неизвестный статус'
 
 
-async def add_to_cart_by_username(product: Product, username):
+async def add_to_cart_by_username(product: Product, username, size=None):
     with Session(engine) as session:
         user = await search_user_by_tag(username)
         cart: Order = await search_cart(user)
@@ -288,7 +288,7 @@ async def get_product(message: Message):
     type_, id_ = message.text.split()[-1].split('_')
     ap = await get_product_by_id(id_)
     await message.delete()
-    await bot.send_photo(message.from_user.id,
+    a = await bot.send_photo(message.from_user.id,
                          BufferedInputFile(bytes(open(f'photos/{type_}_{id_}.jpg', 'rb').read()), 'Candle'),
                          caption=f'{ap.name}\n{ap.description}\n{ap.price}',
                          reply_markup=await simple_inline([[['Добавить товар в корзину', f'to_cart_{type_}_{id_}']]]))
@@ -298,13 +298,13 @@ async def get_product(message: Message):
 async def home_button(message: Message):
     await message.answer(text='''Итак, с чего начнём?
 
-    🌸 Увидеть всё и сразу (Каталог) - Полная коллекция товаров с актуальными ценами и наличием. Чтобы ничего не пропустить
+👀 Увидеть все коллекции (Каталог) — Полная коллекция RO с актуальными ценами и наличием. Чтобы ничего не упустить.
 
-    🎁 Сначала выгодное (Акции) - Хотите сэкономить? Здесь всё самое интересное по особым ценам)
+🎁 Выгодно (Акции и дропы) — Ограниченные серии и специальные условия. Успей занять свою позицию.
 
-    ❓ Нужна Помощь? (Менеджер) - Дима на связи! Любые вопросы по заказу, подбору или доставке — он с радостью поможет.
+❓ Нужна помощь? (Менеджер) — Команда RO на связи! Любые вопросы по заказу, размеру или доставке — поможем с выбором.
 
-    Выбирайте что вам нужно ниже 💖''',
+Выбирай, что тебе ближе 👇''',
                          reply_markup=await simple_inline(
                              [[['Прайс лист', 'price_list']], [['Акции', 'event']],
                               [['менеджер', 'tg://resolve?domain=project_manager_Y|url']]]))
@@ -320,30 +320,30 @@ async def home(message: Message):
         resize_keyboard=True)
     if not await is_user(message.from_user.username):
         await create_user(User(phone_number=message.contact.phone_number, tag=message.from_user.username, ))
-    await message.answer(text='''💫 Привет и добро пожаловать в бот лавки Yume Charm💫
+    await message.answer(text='''💫🏙 Привет и добро пожаловать в официальный бот Renaissance Outfit! 🏙
 
-Очень рада видеть вас здесь! 🌸
+Очень рады видеть тебя здесь! ✨
 
-Это - ваш главный проводник к миру уютных брелочков и мерча из моих артов.
+Это — твой прямой проводник в мир стиля, который возрождает локальную идентичность. Здесь мы создаём не просто одежду, а аутфиты, объединяющие людей и города.
 
-Здесь в боте всё устроено просто и удобно:
-✨ Можно быстро посмотреть весь каталог и цены
-✨ Узнать о секретных акциях и скидках
-✨ И моментально оформить заказ, не переходя в другие приложения
+В этом боте всё устроено просто и по делу:
+✨ Сразу увидеть всю коллекцию — актуальные модели, наличие и цены.
+✨ Узнать про коллаборации и дропы — эксклюзивы и ограниченные серии.
+✨ Моментально оформить заказ — без лишних переходов и сложностей.
 
-За каждым заказом здесь следит Дима, так что всё пройдет гладко и безопасно)
+За каждым заказом следит наша команда, поэтому всё пройдёт гладко и чётко)
 
-Готовы выбрать свой кусочек аниме-магии? Жмите на кнопку ниже! 👇''',
+Готовы выбрать вещь, которая станет частью твоего стиля и твоего города? Жми на кнопку ниже! 👇''',
                          reply_markup=a)
     await message.answer(text='''Итак, с чего начнём?
 
-🌸 Увидеть всё и сразу (Каталог) - Полная коллекция товаров с актуальными ценами и наличием. Чтобы ничего не пропустить
+👀 Увидеть все коллекции (Каталог) — Полная коллекция RO с актуальными ценами и наличием. Чтобы ничего не упустить.
 
-🎁 Сначала выгодное (Акции) - Хотите сэкономить? Здесь всё самое интересное по особым ценам)
+🎁 Выгодно (Акции и дропы) — Ограниченные серии и специальные условия. Успей занять свою позицию.
 
-❓ Нужна Помощь? (Менеджер) - Дима на связи! Любые вопросы по заказу, подбору или доставке — он с радостью поможет.
- 
-Выбирайте что вам нужно ниже 💖''',
+❓ Нужна помощь? (Менеджер) — Команда RO на связи! Любые вопросы по заказу, размеру или доставке — поможем с выбором.
+
+Выбирай, что тебе ближе 👇''',
                          reply_markup=await simple_inline(
                              [[['Прайс лист', 'price_list']], [['Акции', 'event']],
                               [['менеджер', 'tg://resolve?domain=IneY_project_manager|url']]]))
@@ -405,10 +405,10 @@ async def add_product1(message: Message, state: FSMContext):
 @dp.callback_query(F.data == 'return_to_price_list')
 @dp.callback_query(F.data == 'price_list')
 async def get_price_list(message: CallbackQuery):
-    await bot.send_message(chat_id=message.from_user.id, text='''Чтоб тебе было удобнее
+    await bot.send_message(chat_id=message.from_user.id, text='''Чтобы тебе было удобнее
 мы разделили прайс-лист по категориям)
 
-👇🌸 Выбери то что тебе по душе 🌸👇''',
+👇 Выбери то что тебе по душе👇''',
                            reply_markup=await simple_inline(
                                [[['Худи', 'hoodie']], [['Футболки', 'tshort']],
                                 [['Патчи', 'patch']]]))
@@ -441,7 +441,7 @@ async def events(message: Message):
 @dp.callback_query(F.data == 'hoodie')
 async def hoodie(message: CallbackQuery):
     await message.message.delete()
-    s = '''🕯АРОМАТИЧЕСКИЕ СВЕЧКИ🕯
+    s = '''ХУДИ
 
 '''
     print(await get_all_products())
@@ -461,7 +461,7 @@ async def hoodie(message: CallbackQuery):
 @dp.callback_query(F.data == 'tshort')
 async def tshort(message: CallbackQuery):
     await message.message.delete()
-    s = '''🌟БРЕЛОЧКИ 🌟
+    s = '''ФУТБОЛКИ
 
 '''
     print(await get_all_products())
@@ -521,7 +521,7 @@ async def hoodie(message: CallbackQuery):
 @dp.callback_query(F.data == 'patch')
 async def hoodie(message: CallbackQuery):
     await message.message.delete()
-    s = '🔥 ПИРОГРАВЮРЫ 🔥\n\n'
+    s = 'ПАТЧИ\n\n'
     print(await get_all_products())
     if await get_all_products_same_type('patch'):
         for el in await get_all_products_same_type('patch'):
@@ -546,7 +546,7 @@ async def show_cart(message: Message):
     c = 0
     if cart and cart.products:
         for el in cart.products:
-            s += f'{el.name} Цена: {el.price}\n\n'
+            s += f'{el.name} Цена: {el.price} Размер: {el.size}\n\n'
             c += el.price
         s += f'Общая сумма - {c}₽'
         await message.answer(s, reply_markup=await simple_inline(
@@ -564,19 +564,26 @@ async def show_cart(message: Message):
 
 @dp.callback_query(F.data.startswith('to_cart_'))
 async def add_to_cart(message: CallbackQuery):
+    _1, _2, t, i = str(message.data).split('_')
     if await is_user(message.from_user.username):
-        print(message.data)
-        _1, _2, t, i = str(message.data).split('_')
-        apr = await get_all_products_by_id(i)
-        a = Product(name=apr.name, price=apr.price)
-        await add_to_cart_by_username(a, message.from_user.username)
-        a = await bot.send_message(chat_id=message.from_user.id, text='Добавлено в корзину')
-        await asyncio.sleep(5)
-        await a.delete()
+        await bot.edit_message_reply_markup(chat_id=message.from_user.id, message_id=message.message.message_id, reply_markup=await simple_inline([[['XS', f'add_to_cart_{t}_{i}_XS'], ['S', f'add_to_cart_{t}_{i}_S']],
+                                                                                                                                                   [['M', f'add_to_cart_{t}_{i}_M'], ['L', f'add_to_cart_{t}_{i}_L']],
+                                                                                                                                                   [['XL', f'add_to_cart_{t}_{i}_XL']]]))
+
     else:
         await bot.send_message(message.from_user.id, text='Сначала зарегестрируйтесь в боте! Для этого введите /start')
-    await message.message.delete()
 
+@dp.callback_query(F.data.startswith('add_to_cart_'))
+async def to_cart_add_with_size(message: CallbackQuery):
+    print(message.data)
+    _1, _2, _3, t, i, s = str(message.data).split('_')
+    apr = await get_all_products_by_id(i)
+    a = Product(name=apr.name, price=apr.price, size=s)
+    await add_to_cart_by_username(a, message.from_user.username)
+    a = await bot.send_message(chat_id=message.from_user.id, text='Добавлено в корзину')
+    await asyncio.sleep(5)
+    await a.delete()
+    await message.message.delete()
 
 @dp.callback_query(F.data == 'update_status')
 async def admin_update_status(message: CallbackQuery, state: FSMContext):
@@ -602,7 +609,7 @@ async def get_orders(message: Message):
             a = str((datetime.datetime.strptime(el.data, '%Y-%m-%d %H:%M:%S.%f') + datetime.timedelta(days=7)).date()).replace('-', '\-')
             s += f'id Заказа: {el.id}\nСтатус заказа: {await generate_user_status(el.status)}\n{"Примерная дата доставки " + a}\nТочка доставки: `{el.address}`\n'
             for i in el.products:
-                s += f'   {i.name}\n'
+                s += f'   {i.name} Размер: {i.size}\n'
         if len(s) > 4096:
             for x in range(0, len(s), 4096):
                 await message.answer(s[x:x + 4096])
