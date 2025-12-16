@@ -2,6 +2,8 @@ import asyncio
 from io import BytesIO
 from os import getenv
 
+from sqlalchemy.ext.asyncio import create_async_engine
+
 from utils import *
 import aiogram.types
 import asyncio
@@ -11,6 +13,8 @@ from aiogram.filters.state import StatesGroup, State, StateFilter
 from aiogram.types import Message, CallbackQuery, InputFile, BufferedInputFile
 from sqlalchemy import create_engine, select, update
 from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.ext.asyncio.session import async_sessionmaker
 from aiogram.filters import *
 from base import Base, User, Order, Product, AllProducts, Event, City
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo, ReplyKeyboardMarkup, KeyboardButton, \
@@ -27,12 +31,13 @@ from dotenv import load_dotenv
 # logging
 # logging.basicConfig(level=logging.INFO)
 
-engine = create_engine("sqlite:///db/database.db", echo=True)
+engine = create_async_engine("sqlite+aiosqlite:///db/database.db", echo=True)
 load_dotenv('.env')
 TOKEN = getenv("TOKEN")
 bot = Bot(token=getenv('TOKEN'))
 dp = Dispatcher(bot=bot)
 
+async_session = async_sessionmaker(engine, expire_on_commit=False)
 
 class Form(StatesGroup):
     new_product_title = State()
@@ -46,127 +51,134 @@ class Form(StatesGroup):
     new_city = State()
     delete_city_id = State()
 
-def create_db_and_tables() -> None:
-    Base.metadata.create_all(engine)
+async def search_user_by_tag(tag) -> User:
+    async with async_session() as session:
+        stmt = select(User).where(User.tag.in_([tag]))
+        return (await session.scalars(stmt)).first()
+
+
+async def create_db_and_tables() -> None:
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
 
 
 async def add_product(product):
-    with Session(engine) as session:
+    async with async_session() as session:
         session.add(product)
-        session.commit()
+        await session.commit()
 
 
 async def update_order_status_by_id(i, status):
-    with Session(engine) as session:
-        od: Order = session.scalars(select(Order).where(Order.id == i)).first()
+    async with async_session() as session:
+        od: Order = (await session.scalars(select(Order).where(Order.id == i))).first()
         od.status = status
         od.data = str(datetime.datetime.now())[:50]
-        session.commit()
+        await session.commit()
 
 
 async def search_user_by_id(i):
-    with Session(engine) as session:
+    async with async_session() as session:
         stmt = select(User).where(User.id.in_([i]))
-        return session.scalars(stmt).first()
+        return (await session.scalars(stmt)).first()
 
 
 async def update_user_orders_statisticts(i, a, b):
-    with Session(engine) as session:
+    async with async_session() as session:
         stmt = select(User).where(User.id.in_([i]))
-        user: User = session.scalars(stmt).first()
+        user: User = (await session.scalars(stmt)).first()
         user.all_orders_sum += a
         user.all_orders_count += b
-        session.commit()
+        await session.commit()
 
 
 async def add_event(event: Event):
-    with Session(engine) as session:
+    async with async_session() as session:
         session.add(event)
-        session.commit()
+        await session.commit()
 
 async def add_city(city: City):
-    with Session(engine) as session:
+    async with async_session() as session:
         session.add(city)
-        session.commit()
+        await session.commit()
         return city.id
 
 async def delete_event(i):
-    with Session(engine) as session:
+    async with async_session() as session:
         stmt = select(Event).where(Event.id == i)
-        event = session.scalars(stmt).first()
-        session.delete(event)
-        session.commit()
+        event = (await session.scalars(stmt)).first()
+        await session.delete(event)
+        await session.commit()
 
 async def delete_city(i):
-    with Session(engine) as session:
+    async with async_session() as session:
         stmt = select(City).where(City.id == i)
-        city = session.scalars(stmt).first()
-        session.delete(city)
-        session.commit()
+        city = (await session.scalars(stmt)).first()
+        await session.delete(city)
+        await session.commit()
 
 async def get_all_products():
-    with Session(engine) as session:
-        return session.scalars(select(AllProducts)).fetchall()
+    async with async_session() as session:
+        return (await session.scalars(select(AllProducts))).fetchall()
 
 
 async def delete_all_product_by_id(i):
-    with Session(engine) as session:
+    async with async_session() as session:
         stmt = select(AllProducts).where(AllProducts.id == i)
-        product = session.scalars(stmt).first()
-        session.delete(product)
-        session.commit()
+        product = (await session.scalars(stmt)).first()
+        await session.delete(product)
+        await session.commit()
 
 
 async def get_all_events():
-    with Session(engine) as session:
-        return session.scalars(select(Event)).fetchall()
+    async with async_session() as session:
+        return (await session.scalars(select(Event))).fetchall()
 
 async def get_all_cities():
-    with Session(engine) as session:
-        return session.scalars(select(City)).fetchall()
+    async with async_session() as session:
+        return (await session.scalars(select(City))).fetchall()
 
 
 async def get_all_products_same_type(type, city) -> Sequence[AllProducts]:
-    with Session(engine) as session:
-        return session.scalars(select(AllProducts).where(AllProducts.type == type and AllProducts.city_id == city)).fetchall()
+    async with async_session() as session:
+        return (await session.scalars(select(AllProducts).where(AllProducts.type == type and AllProducts.city_id == city))).fetchall()
 
 
 async def change_status_order_by_id(id_, status):
-    with Session(engine) as session:
+    async with async_session() as session:
         stmt = select(Order).where(Order.id == id_)
-        od = session.scalars(stmt).first()
+        od = (await session.scalars(stmt)).first()
         od.status = status
-        session.commit()
+        await session.commit()
 
 async def address_update(id_, address):
-    with Session(engine) as session:
+    async with async_session() as session:
         stmt = select(Order).where(Order.id == id_)
-        od = session.scalars(stmt).first()
+        od = (await session.scalars(stmt)).first()
         od.address = address
-        session.commit()
+        await session.commit()
 
 async def delete_order_by_id(id_):
-    with Session(engine) as session:
+    async with async_session() as session:
         stmt = select(Order).where(Order.id == id_)
-        od: Order = session.scalars(stmt).first()
-        session.delete(od)
-        session.commit()
+        od: Order = (await session.scalars(stmt)).first()
+        await session.delete(od)
+        await session.commit()
 
 
 
 async def generate_user_status(status):
     if status == 'payed':
-        return "оплачено"
+        return "Оплачено • Готовится к отправке"
     elif status == 'awaiting_delivery':
-        return "ожидает доставки"
+        return "Ожидает доставки"
     elif status == 'delivered':
-        return "доставлено"
+        return "Доставлено"
     else:
         return 'неизвестный статус'
 
 
 async def add_to_cart_by_username(product: Product, username, size=None):
-    with Session(engine) as session:
+    async with async_session() as session:
         user = await search_user_by_tag(username)
         cart: Order = await search_cart(user)
         if cart:
@@ -177,7 +189,7 @@ async def add_to_cart_by_username(product: Product, username, size=None):
             session.add(a)
             product.order = a
             session.add(product)
-        session.commit()
+        await session.commit()
 
 
 async def search_cart(user: User):
@@ -195,78 +207,75 @@ async def search_orders(user: User):
 
 
 async def get_all_products_by_id(i):
-    with Session(engine) as session:
+    async with async_session() as session:
         stmt = select(AllProducts).where(AllProducts.id == i)
-        return session.scalars(stmt).first()
+        return (await session.scalars(stmt)).first()
 
 
 async def get_product_by_id(i) -> AllProducts:
-    with Session(engine) as session:
-        return session.scalars(select(AllProducts).where(AllProducts.id == i)).first()
+    async with async_session() as session:
+        return (await session.scalars(select(AllProducts).where(AllProducts.id == i))).first()
 
 
 async def create_user(user: User) -> None:
-    with Session(engine) as session:
+    async with async_session() as session:
         stmt = select(User).where(User.phone_number.in_([user.phone_number]))
-        if not session.scalars(stmt).fetchall():
+        if not (await session.scalars(stmt)).fetchall():
             session.add(user)
         else:
-            session.scalars(stmt).first().tag = user.tag
-        session.commit()
+            (await session.scalars(stmt)).first().tag = user.tag
+        await session.commit()
 
 
 async def delete_product_by_id(product_id):
-    with Session(engine) as session:
+    async with async_session() as session:
         stmt = select(Product).where(Product.id == product_id)
-        product = session.scalars(stmt)
-        session.delete(product)
-        session.commit()
+        product = await session.scalars(stmt)
+        await session.delete(product)
+        await session.commit()
 
 
 async def delete_product(product):
-    with Session(engine) as session:
-        session.delete(product)
-        session.commit()
+    async with async_session() as session:
+        await session.delete(product)
+        await session.commit()
 
 
 async def search_order_by_id(i):
-    with Session(engine) as session:
+    async with async_session() as session:
         stmt = select(Order).where(Order.id == i)
-        return session.scalars(stmt).first()
+        return (await session.scalars(stmt)).first()
 
 async def search_city_by_id(i):
-    with Session(engine) as session:
+    async with async_session() as session:
         stmt = select(City).where(City.id == i)
-        return session.scalars(stmt).first()
+        return (await session.scalars(stmt)).first()
 
 async def is_user(tag):
     stmt = select(User).where(User.tag.in_([tag]))
-    with Session(engine) as session:
-        a = session.scalars(stmt).first()
-        if not session.scalars(stmt).fetchall():
+    async with async_session() as session:
+        a = (await session.scalars(stmt)).first()
+        if not (await session.scalars(stmt)).fetchall():
             return False
         else:
             return True
 
 
 async def get_product_id_by_title(title):
-    with Session(engine) as session:
+    async with async_session() as session:
         stmt = select(AllProducts).where(AllProducts.name == title)
-        return session.scalars(stmt).first()
+        return (await session.scalars(stmt)).first()
 
 
 async def add_product_to_all_products(a: AllProducts):
-    with Session(engine) as session:
+    async with async_session() as session:
         stmt = select(AllProducts).where(AllProducts.name.in_([a.name]))
-        if not session.scalars(stmt).fetchall():
+        if not (await session.scalars(stmt)).fetchall():
             session.add(a)
-        session.commit()
+        await session.commit()
 
 
-async def search_user_by_tag(tag) -> User:
-    with Session(engine) as session:
-        stmt = select(User).where(User.tag.in_([tag]))
-        return session.scalars(stmt).first()
+
 
 
 async def simple_inline(lst):
@@ -301,7 +310,7 @@ async def command_start_handler(message: Message) -> None:
 
 Бот будет знать номер на которой ЗАРЕГЕСТРИРОВАН ваш аккаует в телеграме
 
-🌸 Так вы будете в нашей базе данных 🌸''',
+📂 Так вы будете в нашей базе данных 📂''',
                              reply_markup=await contact_keyboard())
 
 
@@ -318,15 +327,17 @@ async def get_product(message: Message):
 
 @dp.message(F.text == 'Домой')
 async def home_button(message: Message):
-    await message.answer(text='''Итак, с чего начнём?
+    await message.answer(text='''Теперь к делу. Куда направишься?👇
 
-👀 Увидеть все коллекции (Каталог) — Полная коллекция RO с актуальными ценами и наличием. Чтобы ничего не упустить.
 
-🎁 Выгодно (Акции и дропы) — Ограниченные серии и специальные условия. Успей занять свою позицию.
+📁 КОЛЛЕКЦИИ RO
+Изучить текущую коллекцию. Не просто каталог - это архив вещей-артефактов. Каждая со своей историей места.
 
-❓ Нужна помощь? (Менеджер) — Команда RO на связи! Любые вопросы по заказу, размеру или доставке — поможем с выбором.
+🎯 АКЦИИ И ДРОПЫ
+Специальные условия, ограниченные серии и закрытые распродажи. Здесь можно успеть занять свою позицию до того, как вещь станет историей.
 
-Выбирай, что тебе ближе 👇''',
+👥 MANAGER
+Любые вопросы: обсудить размер, материал, коллаборацию или просто поговорить про движение. На связи основатели RO.''',
                          reply_markup=await simple_inline(
                              [[['Прайс лист', 'city_selection']], [['Акции', 'event']],
                               [['менеджер', 'tg://resolve?domain=project_manager_Y|url']]]))
@@ -342,30 +353,29 @@ async def home(message: Message):
         resize_keyboard=True)
     if not await is_user(message.from_user.username):
         await create_user(User(phone_number=message.contact.phone_number, tag=message.from_user.username, ))
-    await message.answer(text='''💫🏙 Привет и добро пожаловать в официальный бот Renaissance Outfit! 🏙
+    await message.answer(text='''Ты в боте RO. 
+Значит, вопрос «Твой район - это просто адрес или круг близких?» - не риторический для тебя.
 
-Очень рады видеть тебя здесь! ✨
+Ты живёшь в своем районе, носишь одежду, как и все.
+Но это вряд ли через нее можно узнать «своих». В ней нет твоего "Я".
 
-Это — твой прямой проводник в мир стиля, который возрождает локальную идентичность. Здесь мы создаём не просто одежду, а аутфиты, объединяющие людей и города.
+Даже в родном районе ты как будто среди npc. Ни знаков, ни своего стиля, просто адрес на картах.
+А что, если твоя одежда станет этим знаком? Знаком, по которому «свои» узнают тебя за километр.
 
-В этом боте всё устроено просто и по делу:
-✨ Сразу увидеть всю коллекцию — актуальные модели, наличие и цены.
-✨ Узнать про коллаборации и дропы — эксклюзивы и ограниченные серии.
-✨ Моментально оформить заказ — без лишних переходов и сложностей.
-
-За каждым заказом следит наша команда, поэтому всё пройдёт гладко и чётко)
-
-Готовы выбрать вещь, которая станет частью твоего стиля и твоего города? Жми на кнопку ниже! 👇''',
+Возроди уникальный стиль твоего города вместе с Renaissance Outfit
+Всего 150 вещей. До 11 января''',
                          reply_markup=a)
-    await message.answer(text='''Итак, с чего начнём?
+    await message.answer(text='''Теперь к делу. Куда направишься?👇
 
-👀 Увидеть все коллекции (Каталог) — Полная коллекция RO с актуальными ценами и наличием. Чтобы ничего не упустить.
 
-🎁 Выгодно (Акции и дропы) — Ограниченные серии и специальные условия. Успей занять свою позицию.
+📁 КОЛЛЕКЦИИ RO
+Изучить текущую коллекцию. Не просто каталог - это архив вещей-артефактов. Каждая со своей историей места.
 
-❓ Нужна помощь? (Менеджер) — Команда RO на связи! Любые вопросы по заказу, размеру или доставке — поможем с выбором.
+🎯 АКЦИИ И ДРОПЫ
+Специальные условия, ограниченные серии и закрытые распродажи. Здесь можно успеть занять свою позицию до того, как вещь станет историей.
 
-Выбирай, что тебе ближе 👇''',
+👥 MANAGER
+Любые вопросы: обсудить размер, материал, коллаборацию или просто поговорить про движение. На связи основатели RO.''',
                          reply_markup=await simple_inline(
                              [[['Прайс лист', 'city_selection']], [['Акции', 'event']],
                               [['менеджер', 'tg://resolve?domain=IneY_project_manager|url']]]))
@@ -431,19 +441,18 @@ async def city_selection(message: CallbackQuery):
         lst.append([[str(el.name), 'price_list_' + str(el.id)]])
     lst.sort(key=lambda x: x[0][0])
     print(lst)
-    await bot.send_message(message.from_user.id, text='Выберите город', reply_markup=await simple_inline(lst))
+    await bot.send_message(message.from_user.id, text='Выбери свой город 🫵', reply_markup=await simple_inline(lst))
 
 @dp.callback_query(F.data.startswith('price_list_'))
 async def get_price_list(message: CallbackQuery):
     await message.message.delete()
     p1, p2, city_id = message.data.split('_')
     await bot.send_message(chat_id=message.from_user.id, text='''Чтобы тебе было удобнее
-мы разделили прайс-лист по категориям)
+мы разделили прайс-лист по категориям
 
-👇 Выбери то что тебе по душе👇''',
+👇 Выбирай своё👇''',
                            reply_markup=await simple_inline(
-                               [[['Худи', f'hoodie_{city_id}']], [['Футболки', f'tshort_{city_id}']],
-                                [['Патчи', f'patch_{city_id}']]]))
+                               [[['Худи', f'hoodie_{city_id}']], [['Футболки', f'tshort_{city_id}']]]))
 
 @dp.callback_query(F.data == 'update_address_delivery')
 async def update_address_delivery(message: CallbackQuery, state: FSMContext):
@@ -474,14 +483,17 @@ async def events(message: Message):
 async def hoodie(message: CallbackQuery):
     await message.message.delete()
     t, city_id = message.data.split('_')
-    s = '''ХУДИ
+    s = '''ХУДИ T.R.O 
 
 '''
     print(await get_all_products())
     if await get_all_products_same_type('hoodie', city_id):
         for el in await get_all_products_same_type('hoodie', city_id):
-            s += hlink(str(el.name), f'tg://resolve?domain=Renaissance_Outfit_bot&start={el.type}_{el.id}') + ' Цена: ' + str(
+            s += hlink('• ' + str(el.name), f'tg://resolve?domain=Renaissance_Outfit_bot&start={el.type}_{el.id}') + ' Цена: ' + str(
                 el.price) + ' ₽' + '\n'
+        s += '''
+— — — — — — — — — — — — — —
+Предзаказ доступен до 11 января'''
         await bot.send_message(chat_id=message.from_user.id, text=s, parse_mode='HTML',
                                reply_markup=await simple_inline([[['Назад', 'return_to_price_list']]]))
     else:
@@ -495,14 +507,17 @@ async def hoodie(message: CallbackQuery):
 async def tshort(message: CallbackQuery):
     await message.message.delete()
     t, city_id = message.data.split('_')
-    s = '''ФУТБОЛКИ
+    s = '''ФУТБОЛКИ T.R.O 
 
 '''
     print(await get_all_products())
     if await get_all_products_same_type('tshort', city_id):
         for el in await get_all_products_same_type('tshort', city_id):
-            s += hlink(str(el.name), f'tg://resolve?domain=Renaissance_Outfit_bot&start={el.type}_{el.id}') + ' Цена: ' + str(
+            s += hlink('• ' + str(el.name), f'tg://resolve?domain=Renaissance_Outfit_bot&start={el.type}_{el.id}') + ' Цена: ' + str(
                 el.price) + ' ₽' + '\n'
+        s += '''
+— — — — — — — — — — — — — —
+Предзаказ доступен до 11 января'''
         await bot.send_message(chat_id=message.from_user.id, text=s, parse_mode='HTML',
                                reply_markup=await simple_inline([[['Назад', 'return_to_price_list']]]))
     else:
@@ -583,7 +598,7 @@ async def show_cart(message: Message):
     c = 0
     if cart and cart.products:
         for el in cart.products:
-            s += f'{el.name} Цена: {el.price} Размер: {el.size}\n\n'
+            s += f'{el.name} - {el.price} ₽\nРазмер: {el.size}\n\n'
             c += el.price
         s += f'Общая сумма - {c}₽'
         await message.answer(s, reply_markup=await simple_inline(
@@ -644,13 +659,17 @@ async def get_orders(message: Message):
     if orders:
         for el in orders:
             a = str((datetime.datetime.strptime(el.data, '%Y-%m-%d %H:%M:%S.%f') + datetime.timedelta(days=7)).date()).replace('-', '\-')
-            s += f'id Заказа: {el.id}\nСтатус заказа: {await generate_user_status(el.status)}\n{"Примерная дата доставки " + a}\nТочка доставки: `{el.address}`\n'
+            s += f'🌍ЗАКАЗ \#{el.id} — ПРИНЯТ В ОБРАБОТКУ\n—————————————————\n💻 Статус: {await generate_user_status(el.status)}\n{"Примерная дата доставки " + a}\nТочка доставки: `{el.address}`\n'
+            s += '''—————————————————
+📦 Состав заказа:\n'''
             for i in el.products:
-                s += f'   {i.name} Размер: {i.size}\n'
+                s += f'• {i.name} — Размер: {i.size}\n'
         if len(s) > 4096:
             for x in range(0, len(s), 4096):
                 await message.answer(s[x:x + 4096])
+            s += '—————————————————'
         else:
+            s += '—————————————————'
             await message.answer(s, parse_mode='MarkdownV2')
         await message.delete()
     else:
@@ -678,15 +697,15 @@ async def print_orders(message: CallbackQuery):
 async def profile(message: Message):
     user = await search_user_by_tag(message.from_user.username)
     await message.answer(f'''👤 ПРОФИЛЬ 👤
-
 Имя: {user.tag}
 Телефон: {user.phone_number}
 ID профиля: {user.id} (для поддержки)
 
+📶 УРОВЕНЬ
 Уровень: {floor(log(int(user.all_orders_sum) // 100, 2)) if user.all_orders_sum != 0 else 0}
-XP до следующего уровня:
-{int(user.all_orders_sum) // 100}/{round(2 ** (log(int(user.all_orders_sum) // 100, 2))) if user.all_orders_sum != 0 else 2}
+XP до следующего уровня:{int(user.all_orders_sum) // 100}/{round(2 ** (log(int(user.all_orders_sum) // 100, 2))) if user.all_orders_sum != 0 else 2}
 
+📦 ЗАКАЗЫ
 Кол-во заказов: {user.all_orders_count}
 Общая сумма заказов: {user.all_orders_sum}
 Персональная скидка: {user.discount}
@@ -845,5 +864,5 @@ async def main() -> None:
 
 
 if __name__ == "__main__":
-    create_db_and_tables()
+    asyncio.run(create_db_and_tables())
     asyncio.run(main())
