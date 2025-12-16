@@ -665,13 +665,14 @@ async def print_orders(message: CallbackQuery):
     c = create_excel_users()
     d = create_excel_all_products()
     e = create_excel_events()
+    f = create_excel_cities()
     await bot.send_message(chat_id=message.from_user.id, text='Пришлю в течении 5 минут')
     await bot.send_document(chat_id=message.from_user.id, document=BufferedInputFile(bytes(open(a, 'rb').read()), a))
     await bot.send_document(chat_id=message.from_user.id, document=BufferedInputFile(bytes(open(b, 'rb').read()), b))
     await bot.send_document(chat_id=message.from_user.id, document=BufferedInputFile(bytes(open(c, 'rb').read()), c))
     await bot.send_document(chat_id=message.from_user.id, document=BufferedInputFile(bytes(open(d, 'rb').read()), d))
     await bot.send_document(chat_id=message.from_user.id, document=BufferedInputFile(bytes(open(e, 'rb').read()), e))
-
+    await bot.send_document(chat_id=message.from_user.id, document=BufferedInputFile(bytes(open(f, 'rb').read()), f))
 
 @dp.message(F.text == 'Профиль')
 async def profile(message: Message):
