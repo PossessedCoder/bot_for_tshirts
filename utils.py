@@ -45,3 +45,10 @@ def create_excel_users():
     a = f"tables/Users{str(datetime.datetime.now()).replace(':', '-')}.xlsx"
     df.to_excel(a, index=False)
     return a
+
+def create_excel_cities():
+    query = "SELECT * FROM cities"
+    df = pd.read_sql(query, engine)
+    a = f"tables/Cities{str(datetime.datetime.now()).replace(':', '-')}.xlsx"
+    df.to_excel(a, index=False)
+    return a

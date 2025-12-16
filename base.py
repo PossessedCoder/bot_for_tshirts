@@ -48,6 +48,12 @@ class Product(Base):
     order: Mapped[Order] = relationship(back_populates="products")
     size: Mapped[String] = mapped_column(String(3))
 
+class City(Base):
+    __tablename__ = 'cities'
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[String] = mapped_column(String(100))
+    city_products: Mapped[List["AllProducts"]] = relationship(back_populates="city", cascade="all, delete-orphan",
+                                                     lazy='subquery')
 
 class AllProducts(Base):
     __tablename__ = 'all_products'
@@ -56,6 +62,8 @@ class AllProducts(Base):
     description: Mapped[String] = mapped_column(String(1000))
     type: Mapped[String] = mapped_column(String(20))
     price: Mapped[int] = mapped_column(Integer)
+    city_id: Mapped[Integer] = mapped_column(ForeignKey('cities.id'))
+    city: Mapped[City] = relationship(back_populates="city_products")
 
     def __repr__(self) -> str:
         return f"AllProducts(id={self.id}, name={self.name}, type={self.type})"

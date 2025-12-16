@@ -12,7 +12,7 @@ from aiogram.types import Message, CallbackQuery, InputFile, BufferedInputFile
 from sqlalchemy import create_engine, select, update
 from sqlalchemy.orm import Session
 from aiogram.filters import *
-from base import Base, User, Order, Product, AllProducts, Event
+from base import Base, User, Order, Product, AllProducts, Event, City
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo, ReplyKeyboardMarkup, KeyboardButton, \
     ReplyKeyboardRemove
 from aiogram.utils.keyboard import InlineKeyboardBuilder
@@ -43,6 +43,8 @@ class Form(StatesGroup):
     address = State()
     new_address = State()
     order_delete_id = State()
+    new_city = State()
+    delete_city_id = State()
 
 def create_db_and_tables() -> None:
     Base.metadata.create_all(engine)
@@ -82,13 +84,25 @@ async def add_event(event: Event):
         session.add(event)
         session.commit()
 
+async def add_city(city: City):
+    with Session(engine) as session:
+        session.add(city)
+        session.commit()
+        return city.id
 
 async def delete_event(i):
     with Session(engine) as session:
         stmt = select(Event).where(Event.id == i)
         event = session.scalars(stmt).first()
         session.delete(event)
+        session.commit()
 
+async def delete_city(i):
+    with Session(engine) as session:
+        stmt = select(City).where(City.id == i)
+        city = session.scalars(stmt).first()
+        session.delete(city)
+        session.commit()
 
 async def get_all_products():
     with Session(engine) as session:
@@ -107,10 +121,14 @@ async def get_all_events():
     with Session(engine) as session:
         return session.scalars(select(Event)).fetchall()
 
-
-async def get_all_products_same_type(type) -> Sequence[AllProducts]:
+async def get_all_cities():
     with Session(engine) as session:
-        return session.scalars(select(AllProducts).where(AllProducts.type == type)).fetchall()
+        return session.scalars(select(City)).fetchall()
+
+
+async def get_all_products_same_type(type, city) -> Sequence[AllProducts]:
+    with Session(engine) as session:
+        return session.scalars(select(AllProducts).where(AllProducts.type == type and AllProducts.city_id == city)).fetchall()
 
 
 async def change_status_order_by_id(id_, status):
@@ -216,6 +234,10 @@ async def search_order_by_id(i):
         stmt = select(Order).where(Order.id == i)
         return session.scalars(stmt).first()
 
+async def search_city_by_id(i):
+    with Session(engine) as session:
+        stmt = select(City).where(City.id == i)
+        return session.scalars(stmt).first()
 
 async def is_user(tag):
     stmt = select(User).where(User.tag.in_([tag]))
@@ -306,7 +328,7 @@ async def home_button(message: Message):
 
 Выбирай, что тебе ближе 👇''',
                          reply_markup=await simple_inline(
-                             [[['Прайс лист', 'price_list']], [['Акции', 'event']],
+                             [[['Прайс лист', 'city_selection']], [['Акции', 'event']],
                               [['менеджер', 'tg://resolve?domain=project_manager_Y|url']]]))
     await message.delete()
 
@@ -345,7 +367,7 @@ async def home(message: Message):
 
 Выбирай, что тебе ближе 👇''',
                          reply_markup=await simple_inline(
-                             [[['Прайс лист', 'price_list']], [['Акции', 'event']],
+                             [[['Прайс лист', 'city_selection']], [['Акции', 'event']],
                               [['менеджер', 'tg://resolve?domain=IneY_project_manager|url']]]))
 
 
@@ -355,7 +377,7 @@ async def admin(message: Message):
         await message.answer(text=f"Здравствуйте {message.from_user.first_name}! Что вы хотите сделать?",
                              reply_markup=await simple_inline(
                                  [[['добавить товар', 'add_product']], [['посмотреть заказы', 'print_orders']],
-                                  [['обновить статус по id', 'update_status']], [['добавить акцию', 'add_events']],
+                                  [['обновить статус по id', 'update_status']], [['добавить акцию', 'add_events']], [['добавить город', 'add_city']], [['удалить город', 'delete_city']],
                                   [['удалить акцию', 'delete_events']], [['удалить товар', 'delete_all_product']], [['изменить адрес доставки', 'update_address_delivery']], [['Удалить доставленный заказ', 'delete_order']]]))
 
 
@@ -387,31 +409,41 @@ async def cancel_handler(message: Message, state: FSMContext):
 async def add_product_(message: CallbackQuery, state: FSMContext):
     await state.set_state(Form.new_product_title)
     await bot.send_message(chat_id=message.from_user.id,
-                           text='Скиньте фото с описанием в формате название /// цена /// тип (tshort, hat, hoodie, patch, pants) /// описание')
+                           text='Скиньте фото с описанием в формате название /// цена /// тип (tshort, hat, hoodie, patch, pants) /// описание /// айди города')
 
 
 @dp.message(Form.new_product_title)
 async def add_product1(message: Message, state: FSMContext):
     data = message.caption.split('///')
     await add_product_to_all_products(
-        AllProducts(name=data[0], price=data[1].replace(' ', ''), type=data[2].replace(' ', ''), description=data[3]))
+        AllProducts(name=data[0], price=data[1].replace(' ', ''), type=data[2].replace(' ', ''), description=data[3], city_id=int(data[4].replace(' ', ''))))
     id_ = await get_product_id_by_title(data[0])
     await bot.download_file((await bot.get_file(message.photo[-1].file_id)).file_path,
                             f'photos/{id_.type}_{id_.id}.jpg')
     await message.answer('Успешно')
     await state.clear()
 
-
 @dp.callback_query(F.data == 'return_to_price_list')
-@dp.callback_query(F.data == 'price_list')
+@dp.callback_query(F.data == 'city_selection')
+async def city_selection(message: CallbackQuery):
+    lst = []
+    for el in await get_all_cities():
+        lst.append([[str(el.name), 'price_list_' + str(el.id)]])
+    lst.sort(key=lambda x: x[0][0])
+    print(lst)
+    await bot.send_message(message.from_user.id, text='Выберите город', reply_markup=await simple_inline(lst))
+
+@dp.callback_query(F.data.startswith('price_list_'))
 async def get_price_list(message: CallbackQuery):
+    await message.message.delete()
+    p1, p2, city_id = message.data.split('_')
     await bot.send_message(chat_id=message.from_user.id, text='''Чтобы тебе было удобнее
 мы разделили прайс-лист по категориям)
 
 👇 Выбери то что тебе по душе👇''',
                            reply_markup=await simple_inline(
-                               [[['Худи', 'hoodie']], [['Футболки', 'tshort']],
-                                [['Патчи', 'patch']]]))
+                               [[['Худи', f'hoodie_{city_id}']], [['Футболки', f'tshort_{city_id}']],
+                                [['Патчи', f'patch_{city_id}']]]))
 
 @dp.callback_query(F.data == 'update_address_delivery')
 async def update_address_delivery(message: CallbackQuery, state: FSMContext):
@@ -438,15 +470,16 @@ async def events(message: Message):
         await bot.send_message(chat_id=message.from_user.id, text=s, parse_mode='HTML')
 
 
-@dp.callback_query(F.data == 'hoodie')
+@dp.callback_query(F.data.startswith('hoodie_'))
 async def hoodie(message: CallbackQuery):
     await message.message.delete()
+    t, city_id = message.data.split('_')
     s = '''ХУДИ
 
 '''
     print(await get_all_products())
-    if await get_all_products_same_type('hoodie'):
-        for el in await get_all_products_same_type('hoodie'):
+    if await get_all_products_same_type('hoodie', city_id):
+        for el in await get_all_products_same_type('hoodie', city_id):
             s += hlink(str(el.name), f'tg://resolve?domain=Test123123213123123123123_bot&start={el.type}_{el.id}') + ' Цена: ' + str(
                 el.price) + ' ₽' + '\n'
         await bot.send_message(chat_id=message.from_user.id, text=s, parse_mode='HTML',
@@ -458,15 +491,16 @@ async def hoodie(message: CallbackQuery):
 
 
 @dp.callback_query(F.data == 'back_products_tshort')
-@dp.callback_query(F.data == 'tshort')
+@dp.callback_query(F.data.startswith('tshort_'))
 async def tshort(message: CallbackQuery):
     await message.message.delete()
+    t, city_id = message.data.split('_')
     s = '''ФУТБОЛКИ
 
 '''
     print(await get_all_products())
-    if await get_all_products_same_type('tshort'):
-        for el in await get_all_products_same_type('tshort'):
+    if await get_all_products_same_type('tshort', city_id):
+        for el in await get_all_products_same_type('tshort', city_id):
             s += hlink(str(el.name), f'tg://resolve?domain=Test123123213123123123123_bot&start={el.type}_{el.id}') + ' Цена: ' + str(
                 el.price) + ' ₽' + '\n'
         await bot.send_message(chat_id=message.from_user.id, text=s, parse_mode='HTML',
@@ -478,15 +512,16 @@ async def tshort(message: CallbackQuery):
 
 
 @dp.callback_query(F.data == 'back_products_hat')
-@dp.callback_query(F.data == 'hat')
+@dp.callback_query(F.data.startswith('hat_'))
 async def hoodie(message: CallbackQuery):
     await message.message.delete()
+    t, city_id = message.data.split('_')
     s = '''🎆 ПОСТЕРЫ 🎆
 
 '''
     print(await get_all_products())
-    if await get_all_products_same_type('hat'):
-        for el in await get_all_products_same_type('hat'):
+    if await get_all_products_same_type('hat_', city_id):
+        for el in await get_all_products_same_type('hat', city_id):
             s += hlink(str(el.name), f'tg://resolve?domain=Test123123213123123123123_bot&start={el.type}_{el.id}') + ' Цена: ' + str(
                 el.price) + ' ₽' + '\n'
         await bot.send_message(chat_id=message.from_user.id, text=s, parse_mode='HTML',
@@ -498,15 +533,16 @@ async def hoodie(message: CallbackQuery):
 
 
 @dp.callback_query(F.data == 'back_products_pants')
-@dp.callback_query(F.data == 'pants')
+@dp.callback_query(F.data.startswith('pants_'))
 async def hoodie(message: CallbackQuery):
     await message.message.delete()
+    t, city_id = message.data.split('_')
     s = '''🧷 ЗНАЧКИ 🧷
 
 '''
     print(await get_all_products())
-    if await get_all_products_same_type('pants'):
-        for el in await get_all_products_same_type('pants'):
+    if await get_all_products_same_type('pants', city_id):
+        for el in await get_all_products_same_type('pants', city_id):
             s += hlink(str(el.name), f'tg://resolve?domain=Test123123213123123123123_bot&start={el.type}_{el.id}') + ' Цена: ' + str(
                 el.price) + ' ₽' + '\n'
         await bot.send_message(chat_id=message.from_user.id, text=s, parse_mode='HTML',
@@ -518,13 +554,14 @@ async def hoodie(message: CallbackQuery):
 
 
 @dp.callback_query(F.data == 'back_products_patch')
-@dp.callback_query(F.data == 'patch')
+@dp.callback_query(F.data.startswith('patch_'))
 async def hoodie(message: CallbackQuery):
     await message.message.delete()
+    t, city_id = message.data.split('_')
     s = 'ПАТЧИ\n\n'
     print(await get_all_products())
-    if await get_all_products_same_type('patch'):
-        for el in await get_all_products_same_type('patch'):
+    if await get_all_products_same_type('patch', city_id):
+        for el in await get_all_products_same_type('patch', city_id):
             s += hlink(str(el.name), f'tg://resolve?domain=Test123123213123123123123_bot&start={el.type}_{el.id}') + ' Цена: ' + str(
                 el.price) + ' ₽' + '\n'
         await bot.send_message(chat_id=message.from_user.id, text=s, parse_mode='HTML',
@@ -670,6 +707,11 @@ async def add_events(message: CallbackQuery, state: FSMContext):
     await state.set_state(Form.new_event)
     await bot.send_message(chat_id=message.from_user.id, text='Отправьте акцию')
 
+@dp.callback_query(F.data == 'add_city')
+async def add_cities(message: CallbackQuery, state: FSMContext):
+    await state.set_state(Form.new_city)
+    await bot.send_message(chat_id=message.from_user.id, text='Отправьте название города')
+
 
 @dp.message(Form.new_event)
 async def add_events1(message: Message, state: FSMContext):
@@ -679,11 +721,24 @@ async def add_events1(message: Message, state: FSMContext):
     await add_event(a)
     await message.answer('Успешно')
 
+@dp.message(Form.new_city)
+async def add_events1(message: Message, state: FSMContext):
+    await state.clear()
+    a = City()
+    a.name = message.text
+    b = await add_city(a)
+    await message.answer(f'Успешно. ID города: {b}')
+
 
 @dp.callback_query(F.data == 'delete_events')
 async def delete_events(message: CallbackQuery, state: FSMContext):
     await state.set_state(Form.event_id)
     await bot.send_message(chat_id=message.from_user.id, text='Отправьте id акции')
+
+@dp.callback_query(F.data == 'delete_city')
+async def delete_events(message: CallbackQuery, state: FSMContext):
+    await state.set_state(Form.delete_city_id)
+    await bot.send_message(chat_id=message.from_user.id, text='Отправьте id города')
 
 
 @dp.message(Form.event_id)
@@ -692,6 +747,11 @@ async def delete_events(message: Message, state: FSMContext):
     await delete_event(int(message.text))
     await message.answer('Успешно')
 
+@dp.message(Form.delete_city_id)
+async def delete_events(message: Message, state: FSMContext):
+    await state.clear()
+    await delete_city(int(message.text))
+    await message.answer('Успешно')
 
 @dp.callback_query(F.data == 'delete_all_product')
 async def delete_all_product(message: CallbackQuery, state: FSMContext):
@@ -719,7 +779,7 @@ async def pay_id(message: CallbackQuery, state: FSMContext):
     # user.discount = user.discount
     await update_order_status_by_id(i, 'payed')
     a = await bot.send_message(message.from_user.id, text='Успешно оплачено!')
-    await bot.send_message(message.from_user.id,text='Сейчас вам нужно будет прислать геолокацию Яндекс маркета в котором вы хотите получить вашу вещь, либо связаться с менеджером для уточнения адреса, либо прислать адрес вручную.',
+    await bot.send_message(message.from_user.id,text='Отправьте адрес Яндекс маркета удобным для вас способом',
                          reply_markup=await simple_inline([[['Прислать геолокацию', f'sendaddressgeo_{i}']], [['Связаться с менеджером', 'tg://resolve?domain=project_manager_Y|url']], [['Прислать адрес', f'sendaddresstext_{i}']]]))
     await message.message.delete()
     await asyncio.sleep(5)
@@ -731,7 +791,7 @@ async def address(message: CallbackQuery, state: FSMContext):
     await message.message.delete()
     await state.set_state(Form.address)
     await state.update_data(address=message.data.split('_')[-1])
-    a = await bot.send_message(message.from_user.id, text="Отправьте геолокацию")
+    a = await bot.send_message(message.from_user.id, text="Отправьте геолокацию(нажмите на иконку скрепки в поле отправки сообщения и выберите пункт геопозиция. Найдите на карте здание Яндекс маркета и нажмите \"Отправить выбранную геопозицию\")")
     await asyncio.sleep(60)
     await a.delete()
 
