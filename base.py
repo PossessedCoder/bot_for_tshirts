@@ -73,3 +73,8 @@ class Event(Base):
     __tablename__ = 'events'
     id: Mapped[int] = mapped_column(primary_key=True)
     description: Mapped[String] = mapped_column(String(200))
+
+class Drop(Base):
+    __tablename__ = 'drops'
+    id: Mapped[int] = mapped_column(primary_key=True)
+    description: Mapped[String] = mapped_column(String(200))

@@ -16,7 +16,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.ext.asyncio.session import async_sessionmaker
 from aiogram.filters import *
-from base import Base, User, Order, Product, AllProducts, Event, City
+from base import Base, User, Order, Product, AllProducts, Event, City, Drop
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo, ReplyKeyboardMarkup, KeyboardButton, \
     ReplyKeyboardRemove
 from aiogram.utils.keyboard import InlineKeyboardBuilder
@@ -49,7 +49,9 @@ class Form(StatesGroup):
     new_address = State()
     order_delete_id = State()
     new_city = State()
+    new_drop = State()
     delete_city_id = State()
+    delete_drop_id = State()
 
 async def search_user_by_tag(tag) -> User:
     async with async_session() as session:
@@ -96,6 +98,11 @@ async def add_event(event: Event):
         session.add(event)
         await session.commit()
 
+async def add_drop(drop: Drop):
+    async with async_session() as session:
+        session.add(drop)
+        await session.commit()
+
 async def add_city(city: City):
     async with async_session() as session:
         session.add(city)
@@ -107,6 +114,13 @@ async def delete_event(i):
         stmt = select(Event).where(Event.id == i)
         event = (await session.scalars(stmt)).first()
         await session.delete(event)
+        await session.commit()
+
+async def delete_drop(i):
+    async with async_session() as session:
+        stmt = select(Drop).where(Drop.id == i)
+        drop = (await session.scalars(stmt)).first()
+        await session.delete(drop)
         await session.commit()
 
 async def delete_city(i):
@@ -132,6 +146,10 @@ async def delete_all_product_by_id(i):
 async def get_all_events():
     async with async_session() as session:
         return (await session.scalars(select(Event))).fetchall()
+
+async def get_all_drops():
+    async with async_session() as session:
+        return (await session.scalars(select(Drop))).fetchall()
 
 async def get_all_cities():
     async with async_session() as session:
@@ -325,22 +343,12 @@ async def get_product(message: Message):
                          reply_markup=await simple_inline([[['Добавить товар в корзину', f'to_cart_{type_}_{id_}']]]))
 
 
-@dp.message(F.text == 'Домой')
+@dp.message(F.text == 'В начало')
 async def home_button(message: Message):
-    await message.answer(text='''Теперь к делу. Куда направишься?👇
-
-
-📁 КОЛЛЕКЦИИ RO
-Изучить текущую коллекцию. Не просто каталог - это архив вещей-артефактов. Каждая со своей историей места.
-
-🎯 АКЦИИ И ДРОПЫ
-Специальные условия, ограниченные серии и закрытые распродажи. Здесь можно успеть занять свою позицию до того, как вещь станет историей.
-
-👥 MANAGER
-Любые вопросы: обсудить размер, материал, коллаборацию или просто поговорить про движение. На связи основатели RO.''',
+    await message.answer(text='''Теперь к делу. Куда направишься? 👇''',
                          reply_markup=await simple_inline(
-                             [[['Прайс лист', 'city_selection']], [['Акции', 'event']],
-                              [['менеджер', 'tg://resolve?domain=project_manager_Y|url']]]))
+                             [[['КОЛЛЕКЦИИ RO', 'city_selection']], [['АКЦИИ', 'event'], ['ДРОПЫ', 'drops']],
+                              [['MANAGER', 'tg://resolve?domain=IneY_project_manager|url']], [['КОНТАКТНЫЕ ДАННЫЕ', 'contact_data']]]))
     await message.delete()
 
 
@@ -349,22 +357,22 @@ async def home(message: Message):
     print(message.from_user.id)
     a = ReplyKeyboardMarkup(
         keyboard=[[KeyboardButton(text='Корзина'), KeyboardButton(text='Профиль'), KeyboardButton(text='Заказы'),
-                   KeyboardButton(text='Домой')]],
+                   KeyboardButton(text='В начало')]],
         resize_keyboard=True)
     if not await is_user(message.from_user.username):
         await create_user(User(phone_number=message.contact.phone_number, tag=message.from_user.username, ))
-    await message.answer(text='''Ты в боте RO. 
+    await message.answer(text='''<b>Ты в боте RO.</b> 
 Значит, вопрос «Твой район - это просто адрес или круг близких?» - не риторический для тебя.
 
-Ты живёшь в своем районе, носишь одежду, как и все.
-Но это вряд ли через нее можно узнать «своих». В ней нет твоего "Я".
+<i>Ты живёшь в своем районе, носишь одежду, как и все.
+Но это вряд ли через нее можно узнать «своих». В ней нет твоего <b>"Я"</b>.</i>
 
 Даже в родном районе ты как будто среди npc. Ни знаков, ни своего стиля, просто адрес на картах.
-А что, если твоя одежда станет этим знаком? Знаком, по которому «свои» узнают тебя за километр.
+А что, если твоя одежда станет этим <b>знаком? Знаком,</b> по которому <b>«свои»</b> узнают тебя за километр.
 
 Возроди уникальный стиль твоего города вместе с Renaissance Outfit
-Всего 150 вещей. До 11 января''',
-                         reply_markup=a)
+<b>Всего 150 вещей. До 11 января</b>''',
+                         reply_markup=a, parse_mode='HTML')
     await message.answer(text='''Теперь к делу. Куда направишься?👇
 
 
@@ -377,8 +385,8 @@ async def home(message: Message):
 👥 MANAGER
 Любые вопросы: обсудить размер, материал, коллаборацию или просто поговорить про движение. На связи основатели RO.''',
                          reply_markup=await simple_inline(
-                             [[['Прайс лист', 'city_selection']], [['Акции', 'event']],
-                              [['менеджер', 'tg://resolve?domain=IneY_project_manager|url']]]))
+                             [[['КОЛЛЕКЦИИ RO', 'city_selection']], [['АКЦИИ', 'event'], ['ДРОПЫ', 'drops']],
+                              [['MANAGER', 'tg://resolve?domain=IneY_project_manager|url']], [['КОНТАКТНЫЕ ДАННЫЕ', 'contact_data']]]))
 
 
 @dp.message(Command('admin'))
@@ -387,10 +395,19 @@ async def admin(message: Message):
         await message.answer(text=f"Здравствуйте {message.from_user.first_name}! Что вы хотите сделать?",
                              reply_markup=await simple_inline(
                                  [[['добавить товар', 'add_product']], [['посмотреть заказы', 'print_orders']],
-                                  [['обновить статус по id', 'update_status']], [['добавить акцию', 'add_events']], [['добавить город', 'add_city']], [['удалить город', 'delete_city']],
+                                  [['обновить статус по id', 'update_status']],[['добавить дроп', 'add_drop']], [['удалить дроп', 'delete_drop']], [['добавить акцию', 'add_events']], [['добавить город', 'add_city']], [['удалить город', 'delete_city']],
                                   [['удалить акцию', 'delete_events']], [['удалить товар', 'delete_all_product']], [['изменить адрес доставки', 'update_address_delivery']], [['Удалить доставленный заказ', 'delete_order']]]))
 
+@dp.callback_query(F.data == 'contact_data')
+async def contact_data(message: CallbackQuery):
+    await bot.send_message(message.from_user.id, text=f'''Контактные данные:
+КОРЕНСКИЙ ГЕОРГИЙ МИХАЙЛОВИЧ
 
+ИНН: 772375480063
+
+Контактный e-mail: renaissanceoutfit@gmail.com
+
+{hlink("Оферта", "https://docs.google.com/document/d/1woYoUkBrL2KoKvDpHozpG948iZMqq0m1/edit?usp=drivesdk&ouid=103410009334109816149&rtpof=true&sd=true")}''', parse_mode='HTML')
 @dp.message(Command('cancel'))
 async def cancel_handler(message: Message, state: FSMContext):
     """
@@ -441,7 +458,7 @@ async def city_selection(message: CallbackQuery):
         lst.append([[str(el.name), 'price_list_' + str(el.id)]])
     lst.sort(key=lambda x: x[0][0])
     print(lst)
-    await bot.send_message(message.from_user.id, text='Выбери свой город 🫵', reply_markup=await simple_inline(lst))
+    await bot.send_photo(message.from_user.id, photo=BufferedInputFile(bytes(open('photos/city_selection.png', 'rb').read()), 'select_city.png'), caption='Выбери свой город 🫵', reply_markup=await simple_inline(lst))
 
 @dp.callback_query(F.data.startswith('price_list_'))
 async def get_price_list(message: CallbackQuery):
@@ -469,21 +486,32 @@ async def update_address_delivery(message: CallbackQuery, state: FSMContext):
 @dp.callback_query(F.data == 'event')
 async def events(message: Message):
     s = '🎁 <b>АКЦИИ</b> 🎁\n\n'
-    for el in await get_all_events():
-        a = el.description + '\n\n'
+    for k, el in enumerate(await get_all_events()):
+        a = f'{str(k + 1)}. '+ el.description + '\n\n'
         s += a
     if len(s) > 4096:
         for x in range(0, len(s), 4096):
             await bot.send_message(chat_id=message.from_user.id, text=s[x:x + 4096], parse_mode='HTML')
     else:
-        await bot.send_message(chat_id=message.from_user.id, text=s, parse_mode='HTML')
+        await bot.send_photo(chat_id=message.from_user.id, photo=BufferedInputFile(bytes(open('photos/events.png', 'rb').read()), 'events.png'), caption=s, parse_mode='HTML')
 
+@dp.callback_query(F.data == 'drops')
+async def drops(message: Message):
+    s = '❔<b>ДРОПЫ</b>❔\n\n'
+    for k, el in enumerate(await get_all_drops()):
+        a = f'{str(k + 1)}. ' + el.description + '\n\n'
+        s += a
+    if len(s) > 4096:
+        for x in range(0, len(s), 4096):
+            await bot.send_message(chat_id=message.from_user.id, text=s[x:x + 4096], parse_mode='HTML')
+    else:
+        await bot.send_photo(chat_id=message.from_user.id, photo=BufferedInputFile(bytes(open('photos/drops.png', 'rb').read()), 'drops.png'),caption=s, parse_mode='HTML')
 
 @dp.callback_query(F.data.startswith('hoodie_'))
 async def hoodie(message: CallbackQuery):
     await message.message.delete()
     t, city_id = message.data.split('_')
-    s = '''ХУДИ T.R.O 
+    s = '''<b>ХУДИ Renaissance Outfit</b>
 
 '''
     print(await get_all_products())
@@ -494,7 +522,7 @@ async def hoodie(message: CallbackQuery):
         s += '''
 — — — — — — — — — — — — — —
 Предзаказ доступен до 11 января'''
-        await bot.send_message(chat_id=message.from_user.id, text=s, parse_mode='HTML',
+        await bot.send_photo(chat_id=message.from_user.id, photo=BufferedInputFile(bytes(open('photos/ro_collection.png', 'rb').read()), 'ro_collection.png'), caption=s, parse_mode='HTML',
                                reply_markup=await simple_inline([[['Назад', 'return_to_price_list']]]))
     else:
         a = await bot.send_message(chat_id=message.from_user.id, text='Ещё нет товара выбранного типа')
@@ -507,7 +535,7 @@ async def hoodie(message: CallbackQuery):
 async def tshort(message: CallbackQuery):
     await message.message.delete()
     t, city_id = message.data.split('_')
-    s = '''ФУТБОЛКИ T.R.O 
+    s = '''<b>ФУТБОЛКИ Renaissance Outfit</b>
 
 '''
     print(await get_all_products())
@@ -518,7 +546,7 @@ async def tshort(message: CallbackQuery):
         s += '''
 — — — — — — — — — — — — — —
 Предзаказ доступен до 11 января'''
-        await bot.send_message(chat_id=message.from_user.id, text=s, parse_mode='HTML',
+        await bot.send_photo(chat_id=message.from_user.id, photo=BufferedInputFile(bytes(open('photos/ro_collection.png', 'rb').read()), 'ro_collection.png'), caption=s, parse_mode='HTML',
                                reply_markup=await simple_inline([[['Назад', 'return_to_price_list']]]))
     else:
         a = await bot.send_message(chat_id=message.from_user.id, text='Ещё нет товара выбранного типа')
@@ -658,18 +686,17 @@ async def get_orders(message: Message):
     s = ''
     if orders:
         for el in orders:
-            a = str((datetime.datetime.strptime(el.data, '%Y-%m-%d %H:%M:%S.%f') + datetime.timedelta(days=7)).date()).replace('-', '\-')
-            s += f'🌍ЗАКАЗ \#{el.id} — ПРИНЯТ В ОБРАБОТКУ\n—————————————————\n💻 Статус: {await generate_user_status(el.status)}\n{"Примерная дата доставки " + a}\nТочка доставки: `{el.address}`\n'
+            a = str((datetime.datetime.strptime(el.data, '%Y-%m-%d %H:%M:%S.%f') + datetime.timedelta(days=31)).date()).replace('-', '\-')
+            s += f'🌍*ЗАКАЗ \#{el.id}* — ПРИНЯТ В ОБРАБОТКУ\n—————————————————\n💻 *Статус:* {await generate_user_status(el.status)}\n{"Примерная дата доставки " + a}\nТочка доставки: `{el.address}`\n'
             s += '''—————————————————
-📦 Состав заказа:\n'''
+📦 *Состав заказа:*\n'''
             for i in el.products:
                 s += f'• {i.name} — Размер: {i.size}\n'
+            s += '—————————————————\n\n'
         if len(s) > 4096:
             for x in range(0, len(s), 4096):
                 await message.answer(s[x:x + 4096])
-            s += '—————————————————'
         else:
-            s += '—————————————————'
             await message.answer(s, parse_mode='MarkdownV2')
         await message.delete()
     else:
@@ -685,6 +712,7 @@ async def print_orders(message: CallbackQuery):
     d = create_excel_all_products()
     e = create_excel_events()
     f = create_excel_cities()
+    g = create_excel_drop()
     await bot.send_message(chat_id=message.from_user.id, text='Пришлю в течении 5 минут')
     await bot.send_document(chat_id=message.from_user.id, document=BufferedInputFile(bytes(open(a, 'rb').read()), a))
     await bot.send_document(chat_id=message.from_user.id, document=BufferedInputFile(bytes(open(b, 'rb').read()), b))
@@ -692,24 +720,25 @@ async def print_orders(message: CallbackQuery):
     await bot.send_document(chat_id=message.from_user.id, document=BufferedInputFile(bytes(open(d, 'rb').read()), d))
     await bot.send_document(chat_id=message.from_user.id, document=BufferedInputFile(bytes(open(e, 'rb').read()), e))
     await bot.send_document(chat_id=message.from_user.id, document=BufferedInputFile(bytes(open(f, 'rb').read()), f))
+    await bot.send_document(chat_id=message.from_user.id, document=BufferedInputFile(bytes(open(g, 'rb').read()), g))
 
 @dp.message(F.text == 'Профиль')
 async def profile(message: Message):
     user = await search_user_by_tag(message.from_user.username)
-    await message.answer(f'''👤 ПРОФИЛЬ 👤
+    await message.answer(f'''👤 <b>ПРОФИЛЬ</b> 👤
 Имя: {user.tag}
 Телефон: {user.phone_number}
 ID профиля: {user.id} (для поддержки)
 
-📶 УРОВЕНЬ
+📶 <b>УРОВЕНЬ</b>
 Уровень: {floor(log(int(user.all_orders_sum) // 100, 2)) if user.all_orders_sum != 0 else 0}
 XP до следующего уровня:{int(user.all_orders_sum) // 100}/{round(2 ** (log(int(user.all_orders_sum) // 100, 2))) if user.all_orders_sum != 0 else 2}
 
-📦 ЗАКАЗЫ
+📦 <b>ЗАКАЗЫ</b>
 Кол-во заказов: {user.all_orders_count}
 Общая сумма заказов: {user.all_orders_sum}
 Персональная скидка: {user.discount}
-''')
+''', parse_mode='HTML')
     await message.delete()
 
 
@@ -727,6 +756,11 @@ async def add_events(message: CallbackQuery, state: FSMContext):
     await state.set_state(Form.new_event)
     await bot.send_message(chat_id=message.from_user.id, text='Отправьте акцию')
 
+@dp.callback_query(F.data == 'add_drop')
+async def add_events(message: CallbackQuery, state: FSMContext):
+    await state.set_state(Form.new_drop)
+    await bot.send_message(chat_id=message.from_user.id, text='Отправьте дроп')
+
 @dp.callback_query(F.data == 'add_city')
 async def add_cities(message: CallbackQuery, state: FSMContext):
     await state.set_state(Form.new_city)
@@ -739,6 +773,14 @@ async def add_events1(message: Message, state: FSMContext):
     a = Event()
     a.description = message.text
     await add_event(a)
+    await message.answer('Успешно')
+
+@dp.message(Form.new_drop)
+async def add_events1(message: Message, state: FSMContext):
+    await state.clear()
+    a = Drop()
+    a.description = message.text
+    await add_drop(a)
     await message.answer('Успешно')
 
 @dp.message(Form.new_city)
@@ -755,6 +797,11 @@ async def delete_events(message: CallbackQuery, state: FSMContext):
     await state.set_state(Form.event_id)
     await bot.send_message(chat_id=message.from_user.id, text='Отправьте id акции')
 
+@dp.callback_query(F.data == 'delete_drop')
+async def delete_events(message: CallbackQuery, state: FSMContext):
+    await state.set_state(Form.delete_drop_id)
+    await bot.send_message(chat_id=message.from_user.id, text='Отправьте id дропа')
+
 @dp.callback_query(F.data == 'delete_city')
 async def delete_events(message: CallbackQuery, state: FSMContext):
     await state.set_state(Form.delete_city_id)
@@ -765,6 +812,12 @@ async def delete_events(message: CallbackQuery, state: FSMContext):
 async def delete_events(message: Message, state: FSMContext):
     await state.clear()
     await delete_event(int(message.text))
+    await message.answer('Успешно')
+
+@dp.message(Form.delete_drop_id)
+async def delete_events(message: Message, state: FSMContext):
+    await state.clear()
+    await delete_drop(int(message.text))
     await message.answer('Успешно')
 
 @dp.message(Form.delete_city_id)

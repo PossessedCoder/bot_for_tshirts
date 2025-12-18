@@ -52,3 +52,10 @@ def create_excel_cities():
     a = f"tables/Cities{str(datetime.datetime.now()).replace(':', '-')}.xlsx"
     df.to_excel(a, index=False)
     return a
+
+def create_excel_drop():
+    query = "SELECT * FROM drops"
+    df = pd.read_sql(query, engine)
+    a = f"tables/Drops{str(datetime.datetime.now()).replace(':', '-')}.xlsx"
+    df.to_excel(a, index=False)
+    return a
