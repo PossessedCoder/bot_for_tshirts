@@ -405,7 +405,10 @@ async def contact_data(message: CallbackQuery):
 
 ИНН: 772375480063
 
-Контактный e-mail: renaissanceoutfit@gmail.com
+Контактный номер:
++79773460330
+
+Контактный e-mail:renaissanceoutfit@gmail.com
 
 {hlink("Оферта", "https://docs.google.com/document/d/1woYoUkBrL2KoKvDpHozpG948iZMqq0m1/edit?usp=drivesdk&ouid=103410009334109816149&rtpof=true&sd=true")}''', parse_mode='HTML')
 @dp.message(Command('cancel'))
