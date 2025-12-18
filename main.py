@@ -1,6 +1,6 @@
 import asyncio
 from io import BytesIO
-from os import getenv
+from os import getenv, remove
 
 from sqlalchemy.ext.asyncio import create_async_engine
 
@@ -724,6 +724,14 @@ async def print_orders(message: CallbackQuery):
     await bot.send_document(chat_id=message.from_user.id, document=BufferedInputFile(bytes(open(e, 'rb').read()), e))
     await bot.send_document(chat_id=message.from_user.id, document=BufferedInputFile(bytes(open(f, 'rb').read()), f))
     await bot.send_document(chat_id=message.from_user.id, document=BufferedInputFile(bytes(open(g, 'rb').read()), g))
+    remove(a)
+    remove(b)
+    remove(c)
+    remove(d)
+    remove(e)
+    remove(f)
+    remove(g)
+
 
 @dp.message(F.text == 'Профиль')
 async def profile(message: Message):
