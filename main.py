@@ -686,7 +686,7 @@ async def get_orders(message: Message):
     s = ''
     if orders:
         for el in orders:
-            a = str((datetime.datetime.strptime(el.data, '%Y-%m-%d %H:%M:%S.%f') + datetime.timedelta(days=21)).date()).replace('-', '\-')
+            a = str((datetime.datetime.strptime(el.data, '%Y-%m-%d %H:%M:%S.%f') + datetime.timedelta(days=21)).date()).replace('-', '\-') if el.status == 'payed' else str((datetime.datetime.strptime(el.data, '%Y-%m-%d %H:%M:%S.%f') + datetime.timedelta(days=7)).date()).replace('-', '\-')
             s += f'🌍*ЗАКАЗ \#{el.id}* — ПРИНЯТ В ОБРАБОТКУ\n—————————————————\n💻 *Статус:* {await generate_user_status(el.status)}\n{"Примерная дата доставки " + a}\nТочка доставки: `{el.address}`\n'
             s += '''—————————————————
 📦 *Состав заказа:*\n'''
