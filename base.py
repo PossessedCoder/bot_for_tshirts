@@ -37,6 +37,7 @@ class Order(Base):
                                                      lazy='subquery')
     status: Mapped[String] = mapped_column(String(20))
     address: Mapped[String] = mapped_column(String(100), nullable=True)
+    link: Mapped[String] = mapped_column(String(200), nullable=True)
 
 
 class Product(Base):

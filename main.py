@@ -52,6 +52,7 @@ class Form(StatesGroup):
     new_drop = State()
     delete_city_id = State()
     delete_drop_id = State()
+    update_order_link_delievery = State()
 
 async def search_user_by_tag(tag) -> User:
     async with async_session() as session:
@@ -75,6 +76,12 @@ async def update_order_status_by_id(i, status):
         od: Order = (await session.scalars(select(Order).where(Order.id == i))).first()
         od.status = status
         od.data = str(datetime.datetime.now())[:50]
+        await session.commit()
+
+async def update_order_link_by_id(i, link):
+    async with async_session() as session:
+        od: Order = (await session.scalars(select(Order).where(Order.id == i))).first()
+        od.link = link
         await session.commit()
 
 
@@ -394,7 +401,7 @@ async def admin(message: Message):
     if message.from_user.id == 7077870371 or message.from_user.id == 1295888314 or message.from_user.id == 1241466637:
         await message.answer(text=f"Здравствуйте {message.from_user.first_name}! Что вы хотите сделать?",
                              reply_markup=await simple_inline(
-                                 [[['добавить товар', 'add_product']], [['посмотреть заказы', 'print_orders']],
+                                 [[['добавить товар', 'add_product']], [['добавить ссылку ЯМаркета', 'update_order_link']], [['посмотреть заказы', 'print_orders']],
                                   [['обновить статус по id', 'update_status']],[['добавить дроп', 'add_drop']], [['удалить дроп', 'delete_drop']], [['добавить акцию', 'add_events']], [['добавить город', 'add_city']], [['удалить город', 'delete_city']],
                                   [['удалить акцию', 'delete_events']], [['удалить товар', 'delete_all_product']], [['изменить адрес доставки', 'update_address_delivery']], [['Удалить доставленный заказ', 'delete_order']]]))
 
@@ -673,6 +680,10 @@ async def admin_update_status(message: CallbackQuery, state: FSMContext):
     await state.set_state(Form.status)
     await bot.send_message(chat_id=message.from_user.id, text='id///status(awaiting_delivery, delivered, taken_away))')
 
+@dp.callback_query(F.data == 'update_order_link')
+async def admin_update_link(message: CallbackQuery, state: FSMContext):
+    await state.set_state(Form.update_order_link_delievery)
+    await bot.send_message(chat_id=message.from_user.id, text='айди///ссылка')
 
 @dp.message(Form.status)
 async def admin_update_status1(message: Message, state: FSMContext):
@@ -681,6 +692,12 @@ async def admin_update_status1(message: Message, state: FSMContext):
     await state.clear()
     await bot.send_message(chat_id=message.from_user.id, text='Успешно')
 
+@dp.message(Form.update_order_link_delievery)
+async def admin_update_link1(message: CallbackQuery, state: FSMContext):
+    data = message.text.replace(' ', '').split('///')
+    await update_order_link_by_id(int(data[0]), data[1])
+    await state.clear()
+    await bot.send_message(chat_id=message.from_user.id, text='Успешно')
 
 @dp.message(F.text == 'Заказы')
 async def get_orders(message: Message):
@@ -689,7 +706,7 @@ async def get_orders(message: Message):
     s = ''
     if orders:
         for el in orders:
-            a = str((datetime.datetime.strptime(el.data, '%Y-%m-%d %H:%M:%S.%f') + datetime.timedelta(days=21)).date()).replace('-', '\-') if el.status == 'payed' else str((datetime.datetime.strptime(el.data, '%Y-%m-%d %H:%M:%S.%f') + datetime.timedelta(days=7)).date()).replace('-', '\-')
+            a = str((datetime.datetime.strptime(el.data, '%Y-%m-%d %H:%M:%S.%f') + datetime.timedelta(days=21)).date()).replace('-', '\-') if not el.link else el.link
             s += f'🌍*ЗАКАЗ \#{el.id}* — ПРИНЯТ В ОБРАБОТКУ\n—————————————————\n💻 *Статус:* {await generate_user_status(el.status)}\n{"Примерная дата доставки " + a}\nТочка доставки: `{el.address}`\n'
             s += '''—————————————————
 📦 *Состав заказа:*\n'''
