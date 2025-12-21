@@ -346,7 +346,7 @@ async def get_product(message: Message):
     await message.delete()
     a = await bot.send_photo(message.from_user.id,
                          BufferedInputFile(bytes(open(f'photos/{type_}_{id_}.jpg', 'rb').read()), 'Candle'),
-                         caption=f'{ap.name}\n{ap.description}\n{ap.price}',
+                         caption=f'{ap.name}\n\n{ap.description}\n',
                          reply_markup=await simple_inline([[['Добавить товар в корзину', f'to_cart_{type_}_{id_}']]]))
 
 
