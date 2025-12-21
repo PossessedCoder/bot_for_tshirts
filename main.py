@@ -754,7 +754,7 @@ async def print_orders(message: CallbackQuery):
 async def profile(message: Message):
     user = await search_user_by_tag(message.from_user.username)
     await message.answer(f'''👤 <b>ПРОФИЛЬ</b> 👤
-Имя: {user.tag}
+Ник: {user.tag}
 Телефон: {user.phone_number}
 ID профиля: {user.id} (для поддержки)
 
