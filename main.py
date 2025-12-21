@@ -758,10 +758,6 @@ async def profile(message: Message):
 Телефон: {user.phone_number}
 ID профиля: {user.id} (для поддержки)
 
-📶 <b>УРОВЕНЬ</b>
-Уровень: {floor(log(int(user.all_orders_sum) // 100, 2)) if user.all_orders_sum != 0 else 0}
-XP до следующего уровня:{int(user.all_orders_sum) // 100}/{round(2 ** (log(int(user.all_orders_sum) // 100, 2))) if user.all_orders_sum != 0 else 2}
-
 📦 <b>ЗАКАЗЫ</b>
 Кол-во заказов: {user.all_orders_count}
 Общая сумма заказов: {user.all_orders_sum}
