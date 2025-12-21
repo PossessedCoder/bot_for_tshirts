@@ -528,7 +528,7 @@ async def hoodie(message: CallbackQuery):
     if await get_all_products_same_type('hoodie', city_id):
         for el in await get_all_products_same_type('hoodie', city_id):
             s += hlink('• ' + str(el.name), f'tg://resolve?domain=Renaissance_Outfit_bot&start={el.type}_{el.id}') + ' Цена: ' + str(
-                el.price) + ' ₽' + '\n'
+                el.price) + ' ₽' + '\n\n'
         s += '''
 — — — — — — — — — — — — — —
 Предзаказ доступен до 11 января'''
