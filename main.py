@@ -552,7 +552,7 @@ async def tshort(message: CallbackQuery):
     if await get_all_products_same_type('tshort', city_id):
         for el in await get_all_products_same_type('tshort', city_id):
             s += hlink('• ' + str(el.name), f'tg://resolve?domain=Renaissance_Outfit_bot&start={el.type}_{el.id}') + ' Цена: ' + str(
-                el.price) + ' ₽' + '\n'
+                el.price) + ' ₽' + '\n\n'
         s += '''
 — — — — — — — — — — — — — —
 Предзаказ доступен до 11 января'''
