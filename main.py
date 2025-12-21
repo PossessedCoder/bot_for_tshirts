@@ -707,9 +707,9 @@ async def get_orders(message: Message):
     if orders:
         for el in orders:
             a = str((datetime.datetime.strptime(el.data, '%Y-%m-%d %H:%M:%S.%f') + datetime.timedelta(days=21)).date()).replace('-', '\-') if not el.link else el.link
-            s += f'🌍*ЗАКАЗ \#{el.id}* — ПРИНЯТ В ОБРАБОТКУ\n—————————————————\n💻 *Статус:* {await generate_user_status(el.status)}\n{"Примерная дата доставки " + a}\nТочка доставки: `{el.address}`\n'
+            s += f'🌍<b>ЗАКАЗ #{el.id}</b> — ПРИНЯТ В ОБРАБОТКУ\n—————————————————\n💻 <b>Статус:</b> {await generate_user_status(el.status)}\n{"Примерная дата доставки " + a}\nТочка доставки: <pre>{el.address}</pre>\n'
             s += '''—————————————————
-📦 *Состав заказа:*\n'''
+📦 <b>Состав заказа:</b>\n'''
             for i in el.products:
                 s += f'• {i.name} — Размер: {i.size}\n'
             s += '—————————————————\n\n'
@@ -717,7 +717,7 @@ async def get_orders(message: Message):
             for x in range(0, len(s), 4096):
                 await message.answer(s[x:x + 4096])
         else:
-            await message.answer(s, parse_mode='MarkdownV2')
+            await message.answer(s, parse_mode='HTML')
         await message.delete()
     else:
         await message.answer('Вы ещё ничего не заказали')
