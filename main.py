@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import create_async_engine
 from utils import *
 import aiogram.types
 import asyncio
+import aiohttp
 from aiogram import Bot, Dispatcher
 from aiogram.fsm.context import FSMContext
 from aiogram.filters.state import StatesGroup, State, StateFilter
@@ -24,9 +25,13 @@ from aiogram import F
 from aiogram.utils.markdown import hlink, link
 import logging
 from typing import *
+import json
+import base64
 import datetime
 import time
 from math import log, floor
+from robokassa import Robokassa, HashAlgorithm
+from robokassa.types import InvoiceType
 from dotenv import load_dotenv
 # logging
 # logging.basicConfig(level=logging.INFO)
@@ -35,7 +40,16 @@ engine = create_async_engine("sqlite+aiosqlite:///db/database.db", echo=True)
 load_dotenv('.env')
 TOKEN = getenv("TOKEN")
 bot = Bot(token=getenv('TOKEN'))
+LOGIN = getenv('LOGIN')
+PAS1 = getenv('PASSWORD1')
+PAS2 = getenv('PASSWORD2')
 dp = Dispatcher(bot=bot)
+robokassa = Robokassa(merchant_login=LOGIN,
+                      password1=PAS1,
+                      password2=PAS2,
+                      algorithm=HashAlgorithm.md5,
+                      is_test=True)
+
 
 async_session = async_sessionmaker(engine, expire_on_commit=False)
 
@@ -59,6 +73,16 @@ async def search_user_by_tag(tag) -> User:
         stmt = select(User).where(User.tag.in_([tag]))
         return (await session.scalars(stmt)).first()
 
+async def check_payment(i):
+    while True:
+        # await asyncio.sleep(15)
+        try:
+            if await robokassa.get_payment_details(inv_id=i):
+                await robokassa.deactivate_invoice(inv_id=i)
+                print(await robokassa.get_payment_details(i))
+                break
+        except:
+            pass
 
 async def create_db_and_tables() -> None:
     async with engine.begin() as conn:
@@ -640,7 +664,9 @@ async def show_cart(message: Message):
             c += el.price
         s += f'Общая сумма - {c}₽'
         await message.answer(s, reply_markup=await simple_inline(
-            [[['Оплатить', f'pay_{cart.id}']], [['Очистить корзину', 'clean_cart']]]))
+            [[['Оплатить', f'{robokassa.generate_open_payment_link(
+    invoice_type=InvoiceType.ONE_TIME, inv_id=cart.id, out_sum=c, merchant_comments='1').url}|url']], [['Очистить корзину', 'clean_cart']]]))
+        await check_payment(cart.id)
     else:
         await message.answer('Вы ещё ничего не добавили в корзину')
     await message.delete()
