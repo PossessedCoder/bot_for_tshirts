@@ -53,6 +53,7 @@ class Form(StatesGroup):
     delete_city_id = State()
     delete_drop_id = State()
     update_order_link_delievery = State()
+    accept_payment_form = State()
 
 async def search_user_by_tag(tag) -> User:
     async with async_session() as session:
@@ -219,14 +220,14 @@ async def add_to_cart_by_username(product: Product, username, size=None):
 
 async def search_cart(user: User):
     try:
-        return list(filter(lambda x: x.status == 'in_cart', user.orders))[0]
+        return list(filter(lambda x: x.status == 'in_cart' or x.status == 'not_payed', user.orders))[0]
     except:
         return None
 
 
 async def search_orders(user: User):
     try:
-        return list(filter(lambda x: x.status != 'in_cart' and x.status != 'taken_away', user.orders))
+        return list(filter(lambda x: x.status != 'in_cart' and x.status != 'taken_away' and x.status != 'not_payed', user.orders))
     except:
         return None
 
@@ -300,6 +301,15 @@ async def add_product_to_all_products(a: AllProducts):
         await session.commit()
 
 
+async def accept_payment(tg_id, username):
+    user: User = await search_user_by_tag(username)
+    async with async_session() as session:
+        od: Order = (await session.scalars(select(Order).where(Order.user_id == user.id).where(Order.status == 'not_payed'))).first()
+        od.status = 'payed'
+        od.data = str(datetime.datetime.now())[:50]
+        print(od.id)
+        await session.commit()
+        await bot.send_message(tg_id, text='Подтверждена оплата!', reply_markup=await simple_inline([[['Дальше', f'selectaddress_{od.id}']]]))
 
 
 
@@ -403,7 +413,7 @@ async def admin(message: Message):
                              reply_markup=await simple_inline(
                                  [[['добавить товар', 'add_product']], [['добавить ссылку ЯМаркета', 'update_order_link']], [['посмотреть заказы', 'print_orders']],
                                   [['обновить статус по id', 'update_status']],[['добавить дроп', 'add_drop']], [['удалить дроп', 'delete_drop']], [['добавить акцию', 'add_events']], [['добавить город', 'add_city']], [['удалить город', 'delete_city']],
-                                  [['удалить акцию', 'delete_events']], [['удалить товар', 'delete_all_product']], [['изменить адрес доставки', 'update_address_delivery']], [['Удалить доставленный заказ', 'delete_order']]]))
+                                  [['удалить акцию', 'delete_events']], [['удалить товар', 'delete_all_product']], [['изменить адрес доставки', 'update_address_delivery']], [['подтвердить оплату', 'accept_payment']], [['Удалить доставленный заказ', 'delete_order']]]))
 
 @dp.callback_query(F.data == 'contact_data')
 async def contact_data(message: CallbackQuery):
@@ -706,7 +716,7 @@ async def get_orders(message: Message):
     s = ''
     if orders:
         for el in orders:
-            a = str((datetime.datetime.strptime(el.data, '%Y-%m-%d %H:%M:%S.%f') + datetime.timedelta(days=21)).date()).replace('-', '\-') if not el.link else el.link
+            a = str((datetime.datetime.strptime(el.data, '%Y-%m-%d %H:%M:%S.%f') + datetime.timedelta(days=21)).date()) if not el.link else el.link
             s += f'🌍<b>ЗАКАЗ #{el.id}</b> — ПРИНЯТ В ОБРАБОТКУ\n—————————————————\n💻 <b>Статус:</b> {await generate_user_status(el.status)}\n{"Примерная дата доставки " + a}\nТочка доставки: <pre>{el.address}</pre>\n'
             s += '''—————————————————
 📦 <b>Состав заказа:</b>\n'''
@@ -862,9 +872,31 @@ async def delete_all_product1(message: Message, state: FSMContext):
     await delete_all_product_by_id(int(message.text))
     await message.answer('Успешно')
 
+@dp.callback_query(F.data == 'accept_payment')
+async def ac_pay(message: Message, state: FSMContext):
+    await state.set_state(Form.accept_payment_form)
+    await bot.send_message(message.from_user.id, text='тг_айди///юзернейм')
+
+@dp.message(Form.accept_payment_form)
+async def ac_pay(message: Message, state: FSMContext):
+    data = message.text.split('///')
+    await state.clear()
+    await accept_payment(data[0], data[1])
+    await message.answer('Успешно')
 
 @dp.callback_query(F.data.startswith('pay_'))
 async def pay_id(message: CallbackQuery, state: FSMContext):
+    i = message.data.split('_')[1]
+    await update_order_status_by_id(i, 'not_payed')
+    a = await bot.send_message(message.from_user.id, text='Для оплаты свяжитесь с менеджером', reply_markup=await simple_inline([[['Менеджер', 'tg://resolve?domain=project_manager_Y|url']]]))
+    await bot.send_message(7077870371, text=f'С вами скоро свяжутся! телеграм айди: {message.from_user.id}, юзернейм: @{message.from_user.username}', )
+    await bot.send_message(1295888314,
+                           text=f'С вами скоро свяжутся! телеграм айди: {message.from_user.id}, юзернейм: @{message.from_user.username}', )
+    await message.message.delete()
+    await asyncio.sleep(5)
+
+@dp.callback_query(F.data.startswith('selectaddress_'))
+async def select_address(message: CallbackQuery):
     i = message.data.split('_')[1]
     c = 0
     order: Order = await search_order_by_id(i)
@@ -874,13 +906,9 @@ async def pay_id(message: CallbackQuery, state: FSMContext):
     print(c, b)
     await update_user_orders_statisticts(order.user_id, c, b)
     # user.discount = user.discount
-    await update_order_status_by_id(i, 'payed')
-    a = await bot.send_message(message.from_user.id, text='Успешно оплачено!')
+    await message.message.delete()
     await bot.send_message(message.from_user.id,text='Отправьте адрес Яндекс маркета удобным для вас способом',
                          reply_markup=await simple_inline([[['Прислать геолокацию', f'sendaddressgeo_{i}']], [['Связаться с менеджером', 'tg://resolve?domain=project_manager_Y|url']], [['Прислать адрес', f'sendaddresstext_{i}']]]))
-    await message.message.delete()
-    await asyncio.sleep(5)
-    await a.delete()
 
 
 @dp.callback_query(F.data.startswith('sendaddressgeo'))
@@ -888,8 +916,8 @@ async def address(message: CallbackQuery, state: FSMContext):
     await message.message.delete()
     await state.set_state(Form.address)
     await state.update_data(address=message.data.split('_')[-1])
-    a = await bot.send_message(message.from_user.id, text="Отправьте геолокацию(нажмите на иконку скрепки в поле отправки сообщения и выберите пункт геопозиция. Найдите на карте здание Яндекс маркета и нажмите \"Отправить выбранную геопозицию\")")
-    await asyncio.sleep(60)
+    a = await bot.send_message(message.from_user.id, text="Отправьте геолокацию(нажмите на иконку скрепки в поле отправки сообщения и выберите пункт геопозиция. Найдите на карте здание Яндекс маркета и нажмите \"Отправить выбранную геопозицию\")", reply_markup=await simple_inline([[['Назад', f'selectaddress_{message.data.split('_')[-1]}']]]))
+    await asyncio.sleep(100)
     await a.delete()
 
 @dp.callback_query(F.data.startswith('sendaddresstext'))
@@ -897,8 +925,8 @@ async def address(message: CallbackQuery, state: FSMContext):
     await message.message.delete()
     await state.set_state(Form.address)
     await state.update_data(address=message.data.split('_')[-1])
-    a = await bot.send_message(message.from_user.id, text="Отправьте адрес")
-    await asyncio.sleep(60)
+    a = await bot.send_message(message.from_user.id, text="Отправьте адрес", reply_markup=await simple_inline([[['Назад', f'selectaddress_{message.data.split('_')[-1]}']]]))
+    await asyncio.sleep(100)
     await a.delete()
 
 @dp.message(F.location, StateFilter(Form.address))
