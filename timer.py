@@ -19,7 +19,7 @@ global_time = (datetime.datetime(year=2025, day=28, month=12) - datetime.datetim
 async def start(message: Message):
     global global_time
     global_time = (datetime.datetime(year=2025, day=28, month=12) - datetime.datetime.now())
-    a = await message.answer('Отсчёт уже пошёл...', reply_markup=await simple_inline([[[str(global_time).replace('days,', 'дней').split('.')[0], 'city_selection']]]))
+    a = await message.answer('Отсчёт уже пошёл...', reply_markup=await simple_inline([[[str(global_time).replace('days,', 'дня').split('.')[0], 'city_selection']]]))
 
 async def main() -> None:
     print(await bot.get_me())
