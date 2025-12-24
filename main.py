@@ -365,7 +365,7 @@ async def home_button(message: Message):
     await message.answer(text='''Теперь к делу. Куда направишься? 👇''',
                          reply_markup=await simple_inline(
                              [[['КОЛЛЕКЦИИ RO', 'city_selection']], [['АКЦИИ', 'event'], ['ДРОПЫ', 'drops']],
-                              [['MANAGER', 'tg://resolve?domain=project_manager_Y|url']], [['КОНТАКТНЫЕ ДАННЫЕ', 'contact_data']]]))
+                              [['MANAGER', 'tg://resolve?domain=project_manager_Y|url']]]))
     await message.delete()
 
 
