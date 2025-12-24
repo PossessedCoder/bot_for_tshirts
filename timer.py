@@ -1,7 +1,7 @@
 import asyncio
 from datetime import timedelta
 
-from aiogram.types import Message
+from aiogram.types import Message, BufferedInputFile
 
 from main import simple_inline
 import datetime
@@ -19,7 +19,8 @@ global_time = (datetime.datetime(year=2025, day=28, month=12) - datetime.datetim
 async def start(message: Message):
     global global_time
     global_time = (datetime.datetime(year=2025, day=28, month=12) - datetime.datetime.now())
-    a = await message.answer('Отсчёт уже пошёл...', reply_markup=await simple_inline([[[str(global_time).replace('days,', 'дня').split('.')[0], 'https://t.me/renaissanceoutfit|url']]]))
+    a = await bot.send_photo(message.from_user.id,photo=BufferedInputFile(bytes(open(f'photos/timer.jpg', 'rb').read()), 'Candle'), reply_markup=await simple_inline([[['ОТСЧЁТ УЖЕ ПОШЁЛ', 'https://t.me/renaissanceoutfit|url']]]))
+    b = await message.answer('<b>ТАЙМЕР           </b>',parse_mode='HTML', reply_markup= await simple_inline([[[str(global_time).replace('days,', 'дня').split('.')[0], 'https://t.me/renaissanceoutfit|url']]]))
 
 async def main() -> None:
     print(await bot.get_me())
