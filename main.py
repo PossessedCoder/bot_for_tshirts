@@ -403,7 +403,7 @@ async def home(message: Message):
 Любые вопросы: обсудить размер, материал, коллаборацию или просто поговорить про движение. На связи основатели RO.''',
                          reply_markup=await simple_inline(
                              [[['КОЛЛЕКЦИИ RO', 'city_selection']], [['АКЦИИ', 'event'], ['ДРОПЫ', 'drops']],
-                              [['MANAGER', 'tg://resolve?domain=project_manager_Y|url']], [['КОНТАКТНЫЕ ДАННЫЕ', 'contact_data']]]))
+                              [['MANAGER', 'tg://resolve?domain=project_manager_Y|url']]]))
 
 
 @dp.message(Command('admin'))
