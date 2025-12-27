@@ -888,11 +888,11 @@ async def change_p(message: CallbackQuery, state: FSMContext):
     await bot.send_message(chat_id=message.from_user.id, text='айди///новое имя///новое описание///новая цена')
 
 
-@dp.message(Form.event_id)
+@dp.message(Form.change_product_by_id)
 async def change_p1(message: Message, state: FSMContext):
     await state.clear()
     data = message.text.split('///')
-    i, name, desc, price = int(data[0].strip()), data[1], data[2], int(data[3].strip)
+    i, name, desc, price = int(data[0].strip()), data[1], data[2], int(data[3].strip())
     await change_product(i, name, desc, price)
     await message.answer('Успешно')
 
