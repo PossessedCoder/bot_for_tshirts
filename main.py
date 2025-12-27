@@ -885,7 +885,7 @@ async def delete_all_product1(message: Message, state: FSMContext):
 @dp.callback_query(F.data == 'change_product')
 async def change_p(message: CallbackQuery, state: FSMContext):
     await state.set_state(Form.change_product_by_id)
-    await bot.send_message(chat_id=message.from_user.id, text='айди///')
+    await bot.send_message(chat_id=message.from_user.id, text='айди///новое имя///новое описание///новая цена')
 
 
 @dp.message(Form.event_id)
