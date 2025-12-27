@@ -892,7 +892,7 @@ async def change_p(message: CallbackQuery, state: FSMContext):
 async def change_p1(message: Message, state: FSMContext):
     await state.clear()
     data = message.text.split('///')
-    i, name, desc, price = int(data[0].strip()), data[1], data[2], data[3]
+    i, name, desc, price = int(data[0].strip()), data[1], data[2], int(data[3].strip)
     await change_product(i, name, desc, price)
     await message.answer('Успешно')
 
