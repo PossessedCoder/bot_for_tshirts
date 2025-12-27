@@ -547,7 +547,7 @@ async def hoodie(message: CallbackQuery):
     print(await get_all_products())
     if await get_all_products_same_type('hoodie', city_id):
         for el in await get_all_products_same_type('hoodie', city_id):
-            s += hlink('• ' + str(el.name), f'tg://resolve?domain=Renaissance_Outfit_bot&start={el.type}_{el.id}') + ' Цена: ' + str(
+            s += hlink('• ' + str(el.name), f'tg://resolve?domain=Test123123213123123123123_bot&start={el.type}_{el.id}') + ' Цена: ' + str(
                 el.price) + ' ₽' + '\n\n'
         s += '''
 — — — — — — — — — — — — — —
@@ -571,7 +571,7 @@ async def tshort(message: CallbackQuery):
     print(await get_all_products())
     if await get_all_products_same_type('tshort', city_id):
         for el in await get_all_products_same_type('tshort', city_id):
-            s += hlink('• ' + str(el.name), f'tg://resolve?domain=Renaissance_Outfit_bot&start={el.type}_{el.id}') + ' Цена: ' + str(
+            s += hlink('• ' + str(el.name), f'tg://resolve?domain=Test123123213123123123123_bot&start={el.type}_{el.id}') + ' Цена: ' + str(
                 el.price) + ' ₽' + '\n\n'
         s += '''
 — — — — — — — — — — — — — —
@@ -595,7 +595,7 @@ async def hoodie(message: CallbackQuery):
     print(await get_all_products())
     if await get_all_products_same_type('hat_', city_id):
         for el in await get_all_products_same_type('hat', city_id):
-            s += hlink(str(el.name), f'tg://resolve?domain=Renaissance_Outfit_bot&start={el.type}_{el.id}') + ' Цена: ' + str(
+            s += hlink(str(el.name), f'tg://resolve?domain=Test123123213123123123123_bot&start={el.type}_{el.id}') + ' Цена: ' + str(
                 el.price) + ' ₽' + '\n'
         await bot.send_message(chat_id=message.from_user.id, text=s, parse_mode='HTML',
                                reply_markup=await simple_inline([[['Назад', 'return_to_price_list']]]))
@@ -616,7 +616,7 @@ async def hoodie(message: CallbackQuery):
     print(await get_all_products())
     if await get_all_products_same_type('pants', city_id):
         for el in await get_all_products_same_type('pants', city_id):
-            s += hlink(str(el.name), f'tg://resolve?domain=Renaissance_Outfit_bot&start={el.type}_{el.id}') + ' Цена: ' + str(
+            s += hlink(str(el.name), f'tg://resolve?domain=Test123123213123123123123_bot&start={el.type}_{el.id}') + ' Цена: ' + str(
                 el.price) + ' ₽' + '\n'
         await bot.send_message(chat_id=message.from_user.id, text=s, parse_mode='HTML',
                                reply_markup=await simple_inline([[['Назад', 'return_to_price_list']]]))
@@ -635,7 +635,7 @@ async def hoodie(message: CallbackQuery):
     print(await get_all_products())
     if await get_all_products_same_type('patch', city_id):
         for el in await get_all_products_same_type('patch', city_id):
-            s += hlink(str(el.name), f'tg://resolve?domain=Renaissance_Outfit_bot&start={el.type}_{el.id}') + ' Цена: ' + str(
+            s += hlink(str(el.name), f'tg://resolve?domain=Test123123213123123123123_bot&start={el.type}_{el.id}') + ' Цена: ' + str(
                 el.price) + ' ₽' + '\n'
         await bot.send_message(chat_id=message.from_user.id, text=s, parse_mode='HTML',
                                reply_markup=await simple_inline([[['Назад', 'return_to_price_list']]]))
@@ -900,7 +900,7 @@ async def change_p1(message: Message, state: FSMContext):
 async def ac_pay(message: Message, state: FSMContext):
     await state.set_state(Form.accept_payment_form)
     await bot.send_message(message.from_user.id, text='тг_айди///юзернейм')
-
+    
 @dp.message(Form.accept_payment_form)
 async def ac_pay(message: Message, state: FSMContext):
     data = message.text.split('///')
