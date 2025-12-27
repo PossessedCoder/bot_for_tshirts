@@ -54,6 +54,7 @@ class Form(StatesGroup):
     delete_drop_id = State()
     update_order_link_delievery = State()
     accept_payment_form = State()
+    change_product_by_id = State()
 
 async def search_user_by_tag(tag) -> User:
     async with async_session() as session:
@@ -188,6 +189,15 @@ async def delete_order_by_id(id_):
         stmt = select(Order).where(Order.id == id_)
         od: Order = (await session.scalars(stmt)).first()
         await session.delete(od)
+        await session.commit()
+
+async def change_product(id_, name, description, price):
+    async with async_session() as session:
+        stmt = select(AllProducts).where(AllProducts.id == id_)
+        product: AllProducts = (await session.scalars(stmt)).first()
+        product.name = name
+        product.description = description
+        product.price = price
         await session.commit()
 
 
@@ -413,7 +423,7 @@ async def admin(message: Message):
                              reply_markup=await simple_inline(
                                  [[['добавить товар', 'add_product']], [['добавить ссылку ЯМаркета', 'update_order_link']], [['посмотреть заказы', 'print_orders']],
                                   [['обновить статус по id', 'update_status']],[['добавить дроп', 'add_drop']], [['удалить дроп', 'delete_drop']], [['добавить акцию', 'add_events']], [['добавить город', 'add_city']], [['удалить город', 'delete_city']],
-                                  [['удалить акцию', 'delete_events']], [['удалить товар', 'delete_all_product']], [['изменить адрес доставки', 'update_address_delivery']], [['подтвердить оплату', 'accept_payment']], [['Удалить доставленный заказ', 'delete_order']]]))
+                                  [['удалить акцию', 'delete_events']], [['удалить товар', 'delete_all_product']], [['изменить адрес доставки', 'update_address_delivery']], [['подтвердить оплату', 'accept_payment']], [['Удалить доставленный заказ', 'delete_order']], [['изменить товар по id', 'change_product']]]))
 
 @dp.callback_query(F.data == 'contact_data')
 async def contact_data(message: CallbackQuery):
@@ -870,6 +880,20 @@ async def delete_all_product(message: CallbackQuery, state: FSMContext):
 async def delete_all_product1(message: Message, state: FSMContext):
     await state.clear()
     await delete_all_product_by_id(int(message.text))
+    await message.answer('Успешно')
+
+@dp.callback_query(F.data == 'change_product')
+async def change_p(message: CallbackQuery, state: FSMContext):
+    await state.set_state(Form.change_product_by_id)
+    await bot.send_message(chat_id=message.from_user.id, text='айди///')
+
+
+@dp.message(Form.event_id)
+async def change_p1(message: Message, state: FSMContext):
+    await state.clear()
+    data = message.text.split('///')
+    i, name, desc, price = int(data[0].strip()), data[1], data[2], data[3]
+    await change_product(i, name, desc, price)
     await message.answer('Успешно')
 
 @dp.callback_query(F.data == 'accept_payment')
