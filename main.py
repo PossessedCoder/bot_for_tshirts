@@ -495,7 +495,7 @@ async def get_price_list(message: CallbackQuery):
     await message.message.delete()
     p1, p2, city_id = message.data.split('_')
     await bot.send_message(chat_id=message.from_user.id, text='''Чтобы тебе было удобнее
-мы разделили католог по категориям
+мы разделили каталог по категориям
 
 👇 Выбирай своё👇''',
                            reply_markup=await simple_inline(
